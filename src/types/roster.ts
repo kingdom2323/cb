@@ -28,6 +28,8 @@ export const ACTIVE_BATTLE_GROUPS: BattleGroup[] = [
   'Inactive',
 ];
 
+export type TabType = 'all-players' | 'castle-battle' | 'kingdom-map';
+
 export interface Player {
   id: string;
   name: string;

@@ -15,6 +15,7 @@ import {
   SortDirection,
   GroupStats,
   AllianceStats,
+  TabType,
   ALLIANCES,
   ACTIVE_BATTLE_GROUPS,
   BATTLE_GROUPS,
@@ -28,8 +29,8 @@ const AUTH_STORAGE_KEY = 'kvk_roster_admin_auth';
 
 interface RosterContextType {
   players: Player[];
-  activeTab: 'all-players' | 'castle-battle';
-  setActiveTab: (tab: 'all-players' | 'castle-battle') => void;
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
   filters: RosterFilters;
   setFilter: <K extends keyof RosterFilters>(key: K, value: RosterFilters[K]) => void;
   resetFilters: () => void;
@@ -80,9 +81,64 @@ function getTcLevelWeight(formattedLevel: string): number {
   return isNaN(num) ? 0 : num;
 }
 
+function getInitialTabFromUrl(): TabType {
+  try {
+    const hash = window.location.hash.toLowerCase();
+    const path = window.location.pathname.toLowerCase();
+    const search = new URLSearchParams(window.location.search);
+    if (
+      hash === '#/map' ||
+      hash === '#map' ||
+      path.endsWith('/map') ||
+      path.endsWith('/map/') ||
+      search.get('tab') === 'map' ||
+      search.get('view') === 'map'
+    ) {
+      return 'kingdom-map';
+    }
+    if (hash === '#/castle' || hash === '#castle' || search.get('tab') === 'castle') {
+      return 'castle-battle';
+    }
+  } catch (e) {
+    console.warn('URL parse error:', e);
+  }
+  return 'all-players';
+}
+
 export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [players, setPlayers] = useState<Player[]>(() => rosterService.loadCachedPlayers());
-  const [activeTab, setActiveTab] = useState<'all-players' | 'castle-battle'>('all-players');
+  const [activeTab, setActiveTabState] = useState<TabType>(getInitialTabFromUrl);
+
+  const setActiveTab = useCallback((tab: TabType) => {
+    setActiveTabState(tab);
+    if (tab === 'kingdom-map') {
+      if (window.location.hash !== '#/map' && window.location.hash !== '#map') {
+        window.location.hash = '/map';
+      }
+    } else if (tab === 'castle-battle') {
+      if (window.location.hash === '#/map' || window.location.hash === '#map') {
+        window.location.hash = '/castle';
+      }
+    } else {
+      if (window.location.hash === '#/map' || window.location.hash === '#map') {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    }
+  }, []);
+
+  // Listen for hash changes to navigate seamlessly between views
+  useEffect(() => {
+    const handleHash = () => {
+      const tab = getInitialTabFromUrl();
+      setActiveTabState(tab);
+    };
+    window.addEventListener('hashchange', handleHash);
+    window.addEventListener('popstate', handleHash);
+    return () => {
+      window.removeEventListener('hashchange', handleHash);
+      window.removeEventListener('popstate', handleHash);
+    };
+  }, []);
   const [filters, setFilters] = useState<RosterFilters>(defaultFilters);
   const [sortField, setSortField] = useState<SortField>('currentPower');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');

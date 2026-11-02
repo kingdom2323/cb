@@ -15,6 +15,7 @@ import {
   LogOut,
   ShieldCheck,
   Eye,
+  Map,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -145,6 +146,21 @@ export const Header: React.FC = () => {
                 <span className="hidden sm:inline">Admin Mode Active</span>
                 <span className="sm:hidden">Admin</span>
               </span>
+
+              {/* Secret Tactical Map Link (Admin Dashboard Tool) */}
+              <button
+                type="button"
+                onClick={() => setActiveTab(activeTab === 'kingdom-map' ? 'castle-battle' : 'kingdom-map')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition border ${
+                  activeTab === 'kingdom-map'
+                    ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
+                    : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-500/30'
+                }`}
+                title="Tactical Kingdom Map (/map)"
+              >
+                <Map className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden lg:inline">{activeTab === 'kingdom-map' ? 'Exit Map' : 'Tactical Map'}</span>
+              </button>
 
               {/* CSV Upload Button (Admin Only) */}
               <button

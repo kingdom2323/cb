@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { StatsBar } from './components/StatsBar';
 import { AllPlayersView } from './components/AllPlayersView';
 import { CastleBattleView } from './components/CastleBattleView';
+import { KingdomMapView } from './components/KingdomMapView/KingdomMapView';
 import { ImportModal } from './components/ImportModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -24,6 +25,7 @@ const AppContent: React.FC = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-4">
         {activeTab === 'all-players' && <AllPlayersView />}
         {activeTab === 'castle-battle' && <CastleBattleView />}
+        {activeTab === 'kingdom-map' && <KingdomMapView />}
       </main>
 
       {/* Minimalist Footer */}
