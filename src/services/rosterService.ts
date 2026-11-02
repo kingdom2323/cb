@@ -7,21 +7,41 @@ const STORAGE_KEY = 'kvk_roster_players_v3';
 
 function normalizeBattleGroup(group: string | null | undefined): BattleGroup {
   if (!group) return 'Unassigned';
-  if (group === 'Castle' || group === 'Castle Roster') return 'Castle';
-  if (group === 'Turret 1') return 'Turret 1';
-  if (group === 'Turret 2') return 'Turret 2';
-  if (group === 'Turret 3') return 'Turret 3';
-  if (group === 'Inactive') return 'Inactive';
+  const clean = String(group).trim();
+  if (clean === 'Castle' || clean === 'Castle Roster') return 'Castle';
+  if (clean === 'Turret 1') return 'Turret 1';
+  if (clean === 'Turret 2') return 'Turret 2';
+  if (clean === 'Turret 3') return 'Turret 3';
+  if (clean === 'Inactive') return 'Inactive';
   return 'Unassigned';
 }
 
 export function mapRowToPlayer(row: any): Player {
+  if (!row || typeof row !== 'object') {
+    return {
+      id: String(Math.random()),
+      name: 'Unknown',
+      alliance: 'ERA',
+      rank: 'R1',
+      currentPower: 0,
+      tgLevel: 'TC1',
+      battleGroup: 'Unassigned',
+    };
+  }
+
+  const validAlliances: Alliance[] = ['ERA', 'FFF', 'TEA', 'VIK'];
+  const alliance: Alliance = validAlliances.includes(row.alliance)
+    ? row.alliance
+    : 'ERA';
+
   return {
-    id: String(row.id),
+    id: String(row.id || `p-${Math.random().toString(36).substring(2, 9)}`),
     name: String(row.name || 'Unknown'),
-    alliance: (row.alliance as Alliance) || 'ERA',
+    alliance,
     rank: String(row.rank || 'R1'),
-    currentPower: Number(row.current_power || 0),
+    currentPower: typeof row.current_power === 'number'
+      ? row.current_power
+      : parseInt(String(row.current_power || '0').replace(/[^\d]/g, ''), 10) || 0,
     tgLevel: formatTcLevel(row.tg_level || ''),
     battleGroup: normalizeBattleGroup(row.battle_group),
   };
@@ -30,12 +50,12 @@ export function mapRowToPlayer(row: any): Player {
 export function mapPlayerToRow(p: Player, preserveGroup?: string | null): SupabasePlayerRow {
   const bg = preserveGroup !== undefined ? preserveGroup : p.battleGroup;
   return {
-    id: p.id,
-    name: p.name,
-    alliance: p.alliance,
-    rank: p.rank,
-    current_power: p.currentPower,
-    tg_level: formatTcLevel(p.tgLevel),
+    id: String(p.id),
+    name: String(p.name || 'Unknown'),
+    alliance: p.alliance || 'ERA',
+    rank: String(p.rank || 'R1'),
+    current_power: Number(p.currentPower) || 0,
+    tg_level: formatTcLevel(p.tgLevel || ''),
     battle_group: !bg || bg === 'Unassigned' ? null : bg,
   };
 }
@@ -56,7 +76,7 @@ export const rosterService = {
         return this.loadCachedPlayers();
       }
 
-      if (data && data.length > 0) {
+      if (Array.isArray(data) && data.length > 0) {
         const players = data.map(mapRowToPlayer);
         this.cachePlayers(players);
         return players;
@@ -94,7 +114,7 @@ export const rosterService = {
    * Batch update multiple players' battle_group in Supabase in real-time
    */
   async batchUpdateBattleGroup(playerIds: string[], group: BattleGroup): Promise<boolean> {
-    if (playerIds.length === 0) return true;
+    if (!Array.isArray(playerIds) || playerIds.length === 0) return true;
     const dbValue = group === 'Unassigned' ? null : group;
     try {
       const { error } = await supabase
@@ -142,19 +162,27 @@ export const rosterService = {
     preserveExistingGroups = true
   ): Promise<Player[]> {
     try {
+      if (!Array.isArray(incomingPlayers) || incomingPlayers.length === 0) {
+        return this.loadCachedPlayers();
+      }
+
       let existingGroupMap = new Map<string, string | null>();
 
       if (preserveExistingGroups) {
-        const { data: existingRows } = await supabase
-          .from('players')
-          .select('id, battle_group');
+        try {
+          const { data: existingRows } = await supabase
+            .from('players')
+            .select('id, battle_group');
 
-        if (existingRows) {
-          for (const row of existingRows) {
-            if (row.battle_group) {
-              existingGroupMap.set(row.id, row.battle_group);
+          if (Array.isArray(existingRows)) {
+            for (const row of existingRows) {
+              if (row && row.battle_group) {
+                existingGroupMap.set(row.id, row.battle_group);
+              }
             }
           }
+        } catch (e) {
+          console.warn('Could not fetch existing groups for merge:', e);
         }
       }
 
@@ -191,7 +219,9 @@ export const rosterService = {
    */
   cachePlayers(players: Player[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+      if (Array.isArray(players)) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+      }
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
     }
@@ -203,16 +233,22 @@ export const rosterService = {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map(mapRowToPlayer);
         }
       }
     } catch (e) {
       console.warn('LocalStorage load failed:', e);
     }
-    return INITIAL_PLAYERS.map((p) => ({
-      ...p,
-      tgLevel: formatTcLevel(p.tgLevel),
-      battleGroup: normalizeBattleGroup(p.battleGroup),
+
+    const fallback = Array.isArray(INITIAL_PLAYERS) ? INITIAL_PLAYERS : [];
+    return fallback.map((p) => mapRowToPlayer({
+      id: p.id,
+      name: p.name,
+      alliance: p.alliance,
+      rank: p.rank,
+      current_power: p.currentPower,
+      tg_level: p.tgLevel,
+      battle_group: p.battleGroup,
     }));
   },
 };

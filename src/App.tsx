@@ -6,6 +6,7 @@ import { AllPlayersView } from './components/AllPlayersView';
 import { CastleBattleView } from './components/CastleBattleView';
 import { ImportModal } from './components/ImportModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Database, Loader2, AlertCircle } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -70,8 +71,10 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <RosterProvider>
-      <AppContent />
-    </RosterProvider>
+    <ErrorBoundary>
+      <RosterProvider>
+        <AppContent />
+      </RosterProvider>
+    </ErrorBoundary>
   );
 }
