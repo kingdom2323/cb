@@ -23,6 +23,9 @@ import { rosterService, mapRowToPlayer } from '../services/rosterService';
 import { supabase } from '../services/supabaseClient';
 import { formatTcLevel } from '../utils/formatters';
 
+const ADMIN_PASSWORD = 'kvk2323r4';
+const AUTH_STORAGE_KEY = 'kvk_roster_admin_auth';
+
 interface RosterContextType {
   players: Player[];
   activeTab: 'all-players' | 'castle-battle';
@@ -51,6 +54,12 @@ interface RosterContextType {
   totalPower: number;
   isDbLoading: boolean;
   dbStatus: 'connected' | 'syncing' | 'error';
+  // Admin Authentication State
+  isAdmin: boolean;
+  loginAdmin: (password: string) => boolean;
+  logoutAdmin: () => void;
+  isLoginModalOpen: boolean;
+  setIsLoginModalOpen: (open: boolean) => void;
 }
 
 const defaultFilters: RosterFilters = {
@@ -81,6 +90,39 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [isDbLoading, setIsDbLoading] = useState<boolean>(true);
   const [dbStatus, setDbStatus] = useState<'connected' | 'syncing' | 'error'>('syncing');
+
+  // Admin authentication state: default is Read-Only (false) unless stored in localStorage
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+
+  const loginAdmin = useCallback((password: string): boolean => {
+    if (password === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      try {
+        localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+      } catch (e) {
+        console.warn('LocalStorage save failed:', e);
+      }
+      return true;
+    }
+    return false;
+  }, []);
+
+  const logoutAdmin = useCallback(() => {
+    setIsAdmin(false);
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (e) {
+      console.warn('LocalStorage remove failed:', e);
+    }
+    setSelectedPlayerIds(new Set());
+  }, []);
 
   // Initial load from Supabase database
   useEffect(() => {
@@ -160,6 +202,7 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [sortField]);
 
   const toggleSelectPlayer = useCallback((id: string) => {
+    if (!isAdmin) return; // Only admin can multi-select for bulk actions
     setSelectedPlayerIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -169,11 +212,12 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       return next;
     });
-  }, []);
+  }, [isAdmin]);
 
   const selectAllFiltered = useCallback((ids: string[]) => {
+    if (!isAdmin) return;
     setSelectedPlayerIds(new Set(ids));
-  }, []);
+  }, [isAdmin]);
 
   const clearSelection = useCallback(() => {
     setSelectedPlayerIds(new Set());
@@ -181,6 +225,8 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Update battle group in React state immediately and sync to Supabase in real-time
   const updatePlayerGroup = useCallback(async (playerId: string, group: BattleGroup) => {
+    if (!isAdmin) return; // Guard: Only admin can modify assignments
+
     // Optimistic UI update
     setPlayers((prev) => {
       const updated = prev.map((p) =>
@@ -192,11 +238,13 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     // Execute real-time Supabase update
     await rosterService.updatePlayerBattleGroup(playerId, group);
-  }, []);
+  }, [isAdmin]);
 
   // Batch update battle groups in React state immediately and sync to Supabase in real-time
   const batchAssignGroup = useCallback(async (playerIds: string[], group: BattleGroup) => {
+    if (!isAdmin) return; // Guard: Only admin can batch assign
     const idSet = new Set(playerIds);
+
     // Optimistic UI update
     setPlayers((prev) => {
       const updated = prev.map((p) =>
@@ -209,10 +257,11 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     // Execute real-time Supabase batch update
     await rosterService.batchUpdateBattleGroup(playerIds, group);
-  }, []);
+  }, [isAdmin]);
 
   // Reset all allocations back to unassigned in React state and in Supabase
   const resetAllAllocations = useCallback(async () => {
+    if (!isAdmin) return; // Guard: Only admin can reset allocations
     setPlayers((prev) => {
       const updated = prev.map((p) => ({
         ...p,
@@ -223,7 +272,7 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     await rosterService.resetAllAllocationsInSupabase();
-  }, []);
+  }, [isAdmin]);
 
   const reloadInitialData = useCallback(async () => {
     setIsDbLoading(true);
@@ -236,14 +285,16 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const clearAllData = useCallback(() => {
+    if (!isAdmin) return;
     setPlayers([]);
     rosterService.cachePlayers([]);
     setSelectedPlayerIds(new Set());
-  }, []);
+  }, [isAdmin]);
 
   // Import players: batch upsert to Supabase
   const importPlayers = useCallback(
     async (incoming: Player[], mode: 'merge' | 'replace') => {
+      if (!isAdmin) return; // Guard: Only admin can import/upsert
       setIsDbLoading(true);
       setDbStatus('syncing');
       try {
@@ -259,7 +310,7 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setSelectedPlayerIds(new Set());
       }
     },
-    []
+    [isAdmin]
   );
 
   // Filtered & Sorted Players for All Players view
@@ -455,6 +506,11 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         totalPower,
         isDbLoading,
         dbStatus,
+        isAdmin,
+        loginAdmin,
+        logoutAdmin,
+        isLoginModalOpen,
+        setIsLoginModalOpen,
       }}
     >
       {children}

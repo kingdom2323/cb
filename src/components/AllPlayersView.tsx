@@ -42,6 +42,7 @@ export const AllPlayersView: React.FC = () => {
     clearSelection,
     updatePlayerGroup,
     batchAssignGroup,
+    isAdmin,
   } = useRoster();
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -68,6 +69,7 @@ export const AllPlayersView: React.FC = () => {
     filteredPlayers.every((p) => selectedPlayerIds.has(p.id));
 
   const handleToggleSelectAll = () => {
+    if (!isAdmin) return;
     if (isAllSelected) {
       clearSelection();
     } else {
@@ -258,8 +260,8 @@ export const AllPlayersView: React.FC = () => {
         </div>
       </div>
 
-      {/* Bulk Action Bar for all 6 Groups */}
-      {selectedPlayerIds.size > 0 && (
+      {/* Bulk Action Bar (Admin Only) */}
+      {isAdmin && selectedPlayerIds.size > 0 && (
         <div className="bg-indigo-950/70 border border-indigo-500/40 rounded-lg px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
           <div className="flex items-center gap-2">
             <span className="font-bold text-indigo-200">
@@ -308,14 +310,16 @@ export const AllPlayersView: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800 select-none uppercase tracking-wider text-[11px]">
-                <th className="py-2.5 px-3 w-8 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isAllSelected}
-                    onChange={handleToggleSelectAll}
-                    className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer"
-                  />
-                </th>
+                {isAdmin && (
+                  <th className="py-2.5 px-3 w-8 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={handleToggleSelectAll}
+                      className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th className="py-2.5 px-2 w-10 text-center font-bold">#</th>
                 <th
                   onClick={() => handleSort('alliance')}
@@ -377,7 +381,7 @@ export const AllPlayersView: React.FC = () => {
             <tbody className="divide-y divide-slate-800/60">
               {paginatedPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-500">
+                  <td colSpan={isAdmin ? 9 : 8} className="py-8 text-center text-slate-500">
                     No players found matching current filters.
                   </td>
                 </tr>
@@ -394,8 +398,10 @@ export const AllPlayersView: React.FC = () => {
                   return (
                     <tr
                       key={player.id}
-                      onClick={() => toggleSelectPlayer(player.id)}
-                      className={`transition-colors cursor-pointer ${
+                      onClick={isAdmin ? () => toggleSelectPlayer(player.id) : undefined}
+                      className={`transition-colors ${
+                        isAdmin ? 'cursor-pointer' : ''
+                      } ${
                         isSelected
                           ? 'bg-indigo-950/40 hover:bg-indigo-950/60'
                           : idx % 2 === 0
@@ -403,15 +409,17 @@ export const AllPlayersView: React.FC = () => {
                           : 'bg-slate-900/80 hover:bg-slate-800/60'
                       }`}
                     >
-                      {/* Checkbox */}
-                      <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectPlayer(player.id)}
-                          className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer"
-                        />
-                      </td>
+                      {/* Checkbox (Admin Only) */}
+                      {isAdmin && (
+                        <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectPlayer(player.id)}
+                            className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer"
+                          />
+                        </td>
+                      )}
 
                       {/* Index */}
                       <td className="py-2 px-2 text-center text-slate-500 font-bold text-[11px]">
@@ -436,7 +444,7 @@ export const AllPlayersView: React.FC = () => {
                         </span>
                       </td>
 
-                      {/* Name with Alliance tag always clearly visible */}
+                      {/* Name with Alliance tag */}
                       <td className="py-2 px-3 font-medium text-white">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-100">{player.name}</span>
@@ -473,26 +481,34 @@ export const AllPlayersView: React.FC = () => {
                         </span>
                       </td>
 
-                      {/* TC Level (strictly formatted as TG1, TG2, TG3, or TC1 to TC30) */}
+                      {/* TC Level */}
                       <td className="py-2 px-3">
                         <span className={`inline-block px-2 py-0.5 rounded text-[10px] ${tcBadgeStyle}`}>
                           {formattedLevel}
                         </span>
                       </td>
 
-                      {/* Battle Group Selector */}
+                      {/* Battle Group: Editable for Admin, Read-Only Badge for Viewers */}
                       <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          value={player.battleGroup}
-                          onChange={(e) => updatePlayerGroup(player.id, e.target.value as BattleGroup)}
-                          className={`w-full text-xs font-bold rounded px-2 py-1 border transition focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-slate-950 cursor-pointer ${groupStyle.badge}`}
-                        >
-                          {BATTLE_GROUPS.map((g) => (
-                            <option key={g} value={g} className="bg-slate-900 text-slate-200">
-                              {g}
-                            </option>
-                          ))}
-                        </select>
+                        {isAdmin ? (
+                          <select
+                            value={player.battleGroup}
+                            onChange={(e) => updatePlayerGroup(player.id, e.target.value as BattleGroup)}
+                            className={`w-full text-xs font-bold rounded px-2 py-1 border transition focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-slate-950 cursor-pointer ${groupStyle.badge}`}
+                          >
+                            {BATTLE_GROUPS.map((g) => (
+                              <option key={g} value={g} className="bg-slate-900 text-slate-200">
+                                {g}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${groupStyle.badge}`}
+                          >
+                            {player.battleGroup || 'Unassigned'}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -521,14 +537,14 @@ export const AllPlayersView: React.FC = () => {
             return (
               <div
                 key={player.id}
-                onClick={() => toggleSelectPlayer(player.id)}
+                onClick={isAdmin ? () => toggleSelectPlayer(player.id) : undefined}
                 className={`p-3 rounded-lg border transition ${
                   isSelected
                     ? 'border-indigo-500/80 bg-indigo-950/30'
                     : 'border-slate-800 bg-slate-900 hover:border-slate-700'
                 }`}
               >
-                {/* Top Row: Name, Alliance, Rank, Checkbox */}
+                {/* Top Row: Name, Alliance, Rank, Checkbox (Admin) */}
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span
@@ -544,16 +560,18 @@ export const AllPlayersView: React.FC = () => {
                     <span className="font-bold text-white text-sm truncate">{player.name}</span>
                   </div>
 
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelectPlayer(player.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0"
-                  />
+                  {isAdmin && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectPlayer(player.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0"
+                    />
+                  )}
                 </div>
 
-                {/* Middle Row: Power, TC Level, ID */}
+                {/* Middle Row: Power, TC Level */}
                 <div className="grid grid-cols-2 gap-2 text-xs py-1.5 border-y border-slate-800/80 my-2">
                   <div>
                     <span className="text-slate-500 text-[10px] block uppercase font-bold">Power</span>
@@ -569,7 +587,7 @@ export const AllPlayersView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Bottom Row: ID and Group selector */}
+                {/* Bottom Row: ID and Group (Editable for Admin, Badge for Public) */}
                 <div className="flex items-center justify-between gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
@@ -584,17 +602,25 @@ export const AllPlayersView: React.FC = () => {
                     )}
                   </button>
 
-                  <select
-                    value={player.battleGroup}
-                    onChange={(e) => updatePlayerGroup(player.id, e.target.value as BattleGroup)}
-                    className={`text-xs font-bold rounded px-2 py-1 border bg-slate-950 focus:outline-none ${groupStyle.badge}`}
-                  >
-                    {BATTLE_GROUPS.map((g) => (
-                      <option key={g} value={g} className="bg-slate-900 text-slate-200">
-                        {g}
-                      </option>
-                    ))}
-                  </select>
+                  {isAdmin ? (
+                    <select
+                      value={player.battleGroup}
+                      onChange={(e) => updatePlayerGroup(player.id, e.target.value as BattleGroup)}
+                      className={`text-xs font-bold rounded px-2 py-1 border bg-slate-950 focus:outline-none ${groupStyle.badge}`}
+                    >
+                      {BATTLE_GROUPS.map((g) => (
+                        <option key={g} value={g} className="bg-slate-900 text-slate-200">
+                          {g}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${groupStyle.badge}`}
+                    >
+                      {player.battleGroup || 'Unassigned'}
+                    </span>
+                  )}
                 </div>
               </div>
             );

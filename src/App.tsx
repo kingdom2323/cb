@@ -5,7 +5,8 @@ import { StatsBar } from './components/StatsBar';
 import { AllPlayersView } from './components/AllPlayersView';
 import { CastleBattleView } from './components/CastleBattleView';
 import { ImportModal } from './components/ImportModal';
-import { Database, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { AdminLoginModal } from './components/AdminLoginModal';
+import { Database, Loader2, AlertCircle } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { activeTab, players, isDbLoading, dbStatus } = useRoster();
@@ -58,8 +59,11 @@ const AppContent: React.FC = () => {
         </div>
       </footer>
 
-      {/* CSV Import Modal */}
+      {/* CSV Import Modal (Admin Only) */}
       <ImportModal />
+
+      {/* Admin Login Modal */}
+      <AdminLoginModal />
     </div>
   );
 };

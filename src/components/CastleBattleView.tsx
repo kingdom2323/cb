@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useRoster } from '../context/RosterContext';
-import { BattleGroup, ACTIVE_BATTLE_GROUPS, BATTLE_GROUPS, Player, ALLIANCES, Alliance } from '../types/roster';
+import { BattleGroup, ACTIVE_BATTLE_GROUPS, Player, ALLIANCES, Alliance } from '../types/roster';
 import {
   ALLIANCE_STYLES,
   GROUP_STYLES,
@@ -26,14 +26,14 @@ import {
 } from 'lucide-react';
 
 export const CastleBattleView: React.FC = () => {
-  const { players, groupStats, updatePlayerGroup, batchAssignGroup } = useRoster();
+  const { players, groupStats, updatePlayerGroup, batchAssignGroup, isAdmin } = useRoster();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAllianceFilter, setSelectedAllianceFilter] = useState<Alliance | 'ALL'>('ALL');
   const [mobileActiveGroup, setMobileActiveGroup] = useState<BattleGroup>('Castle');
   const [copiedGroup, setCopiedGroup] = useState<BattleGroup | null>(null);
 
-  // Modal to assign players from the unassigned reserve pool directly from this view
+  // Modal to assign players from the unassigned reserve pool directly from this view (Admin Only)
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [reserveSearch, setReserveSearch] = useState('');
   const [reserveAllianceFilter, setReserveAllianceFilter] = useState<Alliance | 'ALL'>('ALL');
@@ -114,6 +114,7 @@ export const CastleBattleView: React.FC = () => {
   };
 
   const handleClearGroup = (group: BattleGroup) => {
+    if (!isAdmin) return;
     const ids = playersByGroup[group].map((p) => p.id);
     if (ids.length === 0) return;
     if (window.confirm(`Remove all ${ids.length} players from ${group} back to unallocated reserve?`)) {
@@ -156,7 +157,7 @@ export const CastleBattleView: React.FC = () => {
           </div>
         </div>
 
-        {/* Alliance filter pill buttons & Unallocated reserves quick assigner */}
+        {/* Alliance filter pill buttons & Unallocated reserves quick assigner (Admin Only) */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mr-1">
@@ -193,18 +194,21 @@ export const CastleBattleView: React.FC = () => {
             })}
           </div>
 
-          <div className="h-4 w-px bg-slate-800 hidden md:block" />
-
-          {/* Quick Reserve Assigner Button */}
-          <button
-            type="button"
-            onClick={() => setShowReserveModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600/90 hover:bg-indigo-600 text-white font-bold text-xs transition shadow-sm"
-            title="Assign unallocated players into battle groups"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Assign Reserves ({totalUnassignedCount})</span>
-          </button>
+          {/* Quick Reserve Assigner Button (Admin Only) */}
+          {isAdmin && (
+            <>
+              <div className="h-4 w-px bg-slate-800 hidden md:block" />
+              <button
+                type="button"
+                onClick={() => setShowReserveModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600/90 hover:bg-indigo-600 text-white font-bold text-xs transition shadow-sm"
+                title="Assign unallocated players into battle groups"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Assign Reserves ({totalUnassignedCount})</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -235,7 +239,7 @@ export const CastleBattleView: React.FC = () => {
         })}
       </div>
 
-      {/* Battle Buckets Grid: Exactly 5 Active Groups (Castle, Turret 1, Turret 2, Turret 3, Inactive) */}
+      {/* Battle Buckets Grid: Exactly 5 Active Groups */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 items-start">
         {ACTIVE_BATTLE_GROUPS.map((group) => {
           const groupList = playersByGroup[group];
@@ -275,8 +279,8 @@ export const CastleBattleView: React.FC = () => {
                       )}
                     </button>
 
-                    {/* Reset bucket button */}
-                    {groupList.length > 0 && (
+                    {/* Reset bucket button (Admin Only) */}
+                    {isAdmin && groupList.length > 0 && (
                       <button
                         type="button"
                         onClick={() => handleClearGroup(group)}
@@ -401,21 +405,23 @@ export const CastleBattleView: React.FC = () => {
                           </span>
                         </div>
 
-                        {/* Interactive Group Reassignment Dropdown */}
-                        <div className="pt-1">
-                          <select
-                            value={player.battleGroup}
-                            onChange={(e) => updatePlayerGroup(player.id, e.target.value as BattleGroup)}
-                            className="w-full text-[11px] font-bold rounded px-2 py-1 bg-slate-900 border border-slate-700 text-slate-200 hover:border-slate-600 focus:outline-none focus:border-indigo-500 cursor-pointer transition"
-                          >
-                            {ACTIVE_BATTLE_GROUPS.map((g) => (
-                              <option key={g} value={g}>
-                                Move to: {g}
-                              </option>
-                            ))}
-                            <option value="Unassigned">Remove (Unassign)</option>
-                          </select>
-                        </div>
+                        {/* Interactive Group Reassignment (Admin Only) */}
+                        {isAdmin && (
+                          <div className="pt-1">
+                            <select
+                              value={player.battleGroup}
+                              onChange={(e) => updatePlayerGroup(player.id, e.target.value as BattleGroup)}
+                              className="w-full text-[11px] font-bold rounded px-2 py-1 bg-slate-900 border border-slate-700 text-slate-200 hover:border-slate-600 focus:outline-none focus:border-indigo-500 cursor-pointer transition"
+                            >
+                              {ACTIVE_BATTLE_GROUPS.map((g) => (
+                                <option key={g} value={g}>
+                                  Move to: {g}
+                                </option>
+                              ))}
+                              <option value="Unassigned">Remove (Unassign)</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -426,8 +432,8 @@ export const CastleBattleView: React.FC = () => {
         })}
       </div>
 
-      {/* Quick Reserve Assigner Modal */}
-      {showReserveModal && (
+      {/* Quick Reserve Assigner Modal (Admin Only) */}
+      {isAdmin && showReserveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden text-slate-100">
             {/* Modal Header */}
