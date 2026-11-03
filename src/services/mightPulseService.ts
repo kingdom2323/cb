@@ -4,11 +4,10 @@ import { parseAllianceCsv } from '../utils/csvParser';
 import { rosterService } from './rosterService';
 
 export const MIGHTPULSE_CONFIG = {
-  baseUrl: 'https://api.mightpulse.com',
-  proxyPath: '/mightpulse-proxy',
+  // Target Netlify Serverless Function proxy to bypass browser CORS & protect API key
+  netlifyEndpoint: '/.netlify/functions/mightpulse',
   kingdomId: '2323',
-  apiKey: 'kss_0oRgcYQLGaiVkq66XHC_OI2q2d8Y4wach7udiAKk0cQ',
-  timeoutMs: 12000,
+  timeoutMs: 15000,
 };
 
 export interface MightPulseMember {
@@ -24,22 +23,7 @@ export interface MightPulseMember {
   kid?: number;
   avatar_url?: string;
   kills?: number | null;
-}
-
-export interface MightPulseAllianceResponse {
-  ok?: boolean;
-  tag?: string;
-  kid?: number;
-  members?: MightPulseMember[];
-  alliance?: {
-    aid?: number;
-    name?: string;
-    abbr?: string;
-    kid?: number;
-    power?: number;
-    count?: number;
-    leader_name?: string;
-  };
+  alliance_tag?: string;
 }
 
 export interface MightPulseSyncResult {
@@ -68,8 +52,11 @@ function formatLevelFromTownCenter(tcLevel: number | undefined): string {
 /**
  * Convert MightPulse member row to standard Player object
  */
-function mapMightPulseMemberToPlayer(m: MightPulseMember, alliance: Alliance): Player {
-  const id = String(m.governor_id || m.fid || m.uid || `${alliance}-${Math.random()}`);
+function mapMightPulseMemberToPlayer(m: MightPulseMember, defaultAlliance: Alliance): Player {
+  const allianceTag = (m.alliance_tag || defaultAlliance) as Alliance;
+  const validAlliance: Alliance = ALLIANCES.includes(allianceTag) ? allianceTag : 'ERA';
+
+  const id = String(m.governor_id || m.fid || m.uid || `${validAlliance}-${Math.random()}`);
   const name = String(m.nick_name || m.name || 'Unknown').trim();
   const rank = String(m.alliance_rank_label || (m.alliance_rank ? `R${m.alliance_rank}` : 'R1')).trim();
   const currentPower = typeof m.power === 'number' ? m.power : parseInt(String(m.power || 0), 10) || 0;
@@ -81,7 +68,7 @@ function mapMightPulseMemberToPlayer(m: MightPulseMember, alliance: Alliance): P
     rank,
     currentPower,
     tgLevel,
-    alliance,
+    alliance: validAlliance,
     battleGroup: 'Unassigned', // preserved during Supabase upsert
     updatedAt: new Date().toISOString(),
   };
@@ -89,62 +76,36 @@ function mapMightPulseMemberToPlayer(m: MightPulseMember, alliance: Alliance): P
 
 export const mightPulseService = {
   /**
-   * Fetch single alliance roster from MightPulse API
+   * Fetch live kingdom data via Netlify Serverless Function proxy
    */
-  async fetchAllianceRoster(alliance: Alliance): Promise<Player[]> {
-    const isLocalhost =
-      typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-    // Use local proxy in dev to avoid CORS, or direct API in production
-    const baseUrl = isLocalhost ? MIGHTPULSE_CONFIG.proxyPath : MIGHTPULSE_CONFIG.baseUrl;
-    const url = `${baseUrl}/v1/alliances/${MIGHTPULSE_CONFIG.kingdomId}/${alliance}?include=info,roster`;
-
+  async fetchLiveKingdomPlayers(): Promise<Player[]> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), MIGHTPULSE_CONFIG.timeoutMs);
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(MIGHTPULSE_CONFIG.netlifyEndpoint, {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${MIGHTPULSE_CONFIG.apiKey}`,
-          'X-Api-Key': MIGHTPULSE_CONFIG.apiKey,
           Accept: 'application/json',
         },
         signal: controller.signal,
       });
 
       if (!response.ok) {
-        throw new Error(`MightPulse API responded with HTTP ${response.status} (${response.statusText})`);
+        throw new Error(`Netlify proxy responded with HTTP ${response.status} (${response.statusText})`);
       }
 
-      const json: MightPulseAllianceResponse = await response.json();
-      if (!json || !Array.isArray(json.members)) {
-        throw new Error(`Invalid response structure for alliance ${alliance}`);
+      const json = await response.json();
+      if (!json || !Array.isArray(json.members) || json.members.length === 0) {
+        throw new Error('Netlify proxy returned invalid or empty members payload');
       }
 
-      return json.members.map((m) => mapMightPulseMemberToPlayer(m, alliance));
+      return json.members.map((m: MightPulseMember) =>
+        mapMightPulseMemberToPlayer(m, (m.alliance_tag || 'ERA') as Alliance)
+      );
     } finally {
       clearTimeout(timeoutId);
     }
-  },
-
-  /**
-   * Fetch all 4 alliances (ERA, FFF, TEA, VIK) from MightPulse API in parallel
-   */
-  async fetchLiveKingdomPlayers(): Promise<Player[]> {
-    const results = await Promise.all(
-      ALLIANCES.map(async (alliance) => {
-        return await this.fetchAllianceRoster(alliance);
-      })
-    );
-
-    const allPlayers: Player[] = results.flat();
-    if (allPlayers.length === 0) {
-      throw new Error('MightPulse returned 0 total players across all alliances');
-    }
-
-    return allPlayers;
   },
 
   /**
@@ -165,7 +126,7 @@ export const mightPulseService = {
   },
 
   /**
-   * Execute full synchronization: Try MightPulse live API first;
+   * Execute full synchronization: Try Netlify MightPulse Serverless Function first;
    * If it fails or times out, seamlessly fall back to local CSVs;
    * Then upsert the players directly into the Supabase database.
    */
@@ -175,13 +136,13 @@ export const mightPulseService = {
     let errorDetails: string | undefined;
 
     try {
-      // 1. Attempt Live MightPulse API sync
+      // 1. Attempt Netlify Serverless Function proxy
       players = await this.fetchLiveKingdomPlayers();
       source = 'mightpulse';
     } catch (apiError: any) {
-      // 2. Fall back automatically to Local CSV Backup
+      // 2. Automatically fall back to Local CSV Backup
       errorDetails = apiError?.message || String(apiError);
-      console.warn('MightPulse API request failed, engaging local CSV backup fallback:', apiError);
+      console.warn('Netlify MightPulse proxy request failed, engaging local CSV backup fallback:', apiError);
 
       source = 'csv_fallback';
       players = await this.parseLocalCsvFallback();
@@ -207,8 +168,8 @@ export const mightPulseService = {
 
     const message =
       source === 'mightpulse'
-        ? `Successfully synchronized live data from MightPulse API (Kingdom ${MIGHTPULSE_CONFIG.kingdomId}: ${players.length} players across ERA, FFF, TEA, VIK).`
-        : `MightPulse API unreachable (${errorDetails || 'network/timeout'}). Successfully synchronized from local CSV backup (${players.length} players).`;
+        ? `Successfully synchronized live data from MightPulse API via Netlify Proxy (Kingdom ${MIGHTPULSE_CONFIG.kingdomId}: ${players.length} players across ERA, FFF, TEA, VIK).`
+        : `MightPulse API unreachable (${errorDetails || 'network error'}). Successfully synchronized from local CSV backup (${players.length} players).`;
 
     return {
       success: true,
