@@ -1,11 +1,36 @@
-import { Player, BattleGroup, Alliance, SupabasePlayerRow } from '../types/roster';
+import { Player, BattleGroup, Alliance, ALLIANCES, SupabasePlayerRow } from '../types/roster';
 import { supabase } from './supabaseClient';
 import { INITIAL_PLAYERS } from '../data/initialData';
 import { formatTcLevel } from '../utils/formatters';
 
 const STORAGE_KEY = 'kvk_roster_players_v3';
 
-function normalizeBattleGroup(group: string | null | undefined): BattleGroup {
+/**
+ * Robust power value parser: handles raw numbers, strings with commas,
+ * abbreviated numbers (e.g. 253.2M, 1.5B, 850K), and nulls.
+ */
+export function parsePowerValue(raw: unknown): number {
+  if (raw == null) return 0;
+  if (typeof raw === 'number') {
+    if (isNaN(raw)) return 0;
+    return Math.round(raw);
+  }
+  const str = String(raw).trim().toUpperCase();
+  if (!str) return 0;
+  if (str.endsWith('B')) {
+    return Math.round(parseFloat(str.replace(/[^\d.]/g, '')) * 1_000_000_000);
+  }
+  if (str.endsWith('M')) {
+    return Math.round(parseFloat(str.replace(/[^\d.]/g, '')) * 1_000_000);
+  }
+  if (str.endsWith('K')) {
+    return Math.round(parseFloat(str.replace(/[^\d.]/g, '')) * 1_000);
+  }
+  const digits = str.replace(/[^\d]/g, '');
+  return parseInt(digits, 10) || 0;
+}
+
+export function normalizeBattleGroup(group: string | null | undefined): BattleGroup {
   if (!group) return 'Unassigned';
   const clean = String(group).trim();
   if (clean === 'Castle' || clean === 'Castle Roster') return 'Castle';
@@ -34,14 +59,14 @@ export function mapRowToPlayer(row: any): Player {
     ? row.alliance
     : 'ERA';
 
+  const cleanName = String(row.name || 'Unknown').replace(/\u00a0/g, ' ').trim();
+
   return {
     id: String(row.id || `p-${Math.random().toString(36).substring(2, 9)}`),
-    name: String(row.name || 'Unknown'),
+    name: cleanName,
     alliance,
-    rank: String(row.rank || 'R1'),
-    currentPower: typeof row.current_power === 'number'
-      ? row.current_power
-      : parseInt(String(row.current_power || '0').replace(/[^\d]/g, ''), 10) || 0,
+    rank: String(row.rank || 'R1').replace(/\u00a0/g, ' ').trim(),
+    currentPower: parsePowerValue(row.current_power),
     tgLevel: formatTcLevel(row.tg_level || ''),
     battleGroup: normalizeBattleGroup(row.battle_group),
   };
@@ -51,10 +76,10 @@ export function mapPlayerToRow(p: Player, preserveGroup?: string | null): Supaba
   const bg = preserveGroup !== undefined ? preserveGroup : p.battleGroup;
   return {
     id: String(p.id),
-    name: String(p.name || 'Unknown'),
+    name: String(p.name || 'Unknown').replace(/\u00a0/g, ' ').trim(),
     alliance: p.alliance || 'ERA',
-    rank: String(p.rank || 'R1'),
-    current_power: Number(p.currentPower) || 0,
+    rank: String(p.rank || 'R1').replace(/\u00a0/g, ' ').trim(),
+    current_power: parsePowerValue(p.currentPower),
     tg_level: formatTcLevel(p.tgLevel || ''),
     battle_group: !bg || bg === 'Unassigned' ? null : bg,
   };
@@ -155,6 +180,102 @@ export const rosterService = {
   },
 
   /**
+   * Dedicated synchronization for live MightPulse data:
+   * 1. Preserves existing Supabase battle group allocations
+   * 2. Upserts all incoming live players to Supabase
+   * 3. Prunes stale alliance players who left ERA, FFF, TEA, VIK
+   * 4. Updates local cache exclusively with live players
+   * 5. Returns strictly the live synced player list (no CSV merge)
+   */
+  async syncMightPulsePlayersToSupabase(
+    incomingPlayers: Player[],
+    preserveExistingGroups = true
+  ): Promise<Player[]> {
+    if (!Array.isArray(incomingPlayers) || incomingPlayers.length === 0) {
+      throw new Error('No live players provided to sync');
+    }
+
+    const existingGroupMap = new Map<string, string | null>();
+
+    if (preserveExistingGroups) {
+      try {
+        const { data: existingRows } = await supabase
+          .from('players')
+          .select('id, battle_group');
+
+        if (Array.isArray(existingRows)) {
+          for (const row of existingRows) {
+            if (row && row.battle_group) {
+              existingGroupMap.set(String(row.id), row.battle_group);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch existing groups for merge:', e);
+      }
+    }
+
+    // Merge preserved battle groups directly into incoming player objects
+    const syncedPlayers: Player[] = incomingPlayers.map((p) => {
+      const preservedGroup = existingGroupMap.get(p.id);
+      const groupToUse = preservedGroup !== undefined && preservedGroup !== null
+        ? normalizeBattleGroup(preservedGroup)
+        : p.battleGroup;
+      return {
+        ...p,
+        battleGroup: groupToUse,
+      };
+    });
+
+    // Format incoming into database rows
+    const rows: SupabasePlayerRow[] = syncedPlayers.map((p) => mapPlayerToRow(p, p.battleGroup));
+
+    // Upsert in batches of 100
+    const chunkSize = 100;
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const chunk = rows.slice(i, i + chunkSize);
+      const { error } = await supabase
+        .from('players')
+        .upsert(chunk, { onConflict: 'id' });
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    // Prune stale players from ERA, FFF, TEA, VIK who are no longer in the live roster
+    try {
+      const liveIdSet = new Set(incomingPlayers.map((p) => String(p.id)));
+      const { data: allDbRows } = await supabase
+        .from('players')
+        .select('id, alliance');
+
+      if (Array.isArray(allDbRows)) {
+        const staleIds = allDbRows
+          .filter((row) => ALLIANCES.includes(row.alliance as Alliance) && !liveIdSet.has(String(row.id)))
+          .map((row) => String(row.id));
+
+        if (staleIds.length > 0) {
+          console.info(`Pruning ${staleIds.length} stale alliance member(s) from Supabase:`, staleIds);
+          for (let i = 0; i < staleIds.length; i += 50) {
+            await supabase.from('players').delete().in('id', staleIds.slice(i, i + 50));
+          }
+        }
+      }
+    } catch (cleanErr) {
+      console.warn('Error while cleaning stale players:', cleanErr);
+    }
+
+    // Sort players by power descending
+    syncedPlayers.sort((a, b) => b.currentPower - a.currentPower);
+
+    // Cache ONLY the live MightPulse synced players
+    this.cachePlayers(syncedPlayers);
+
+    return syncedPlayers;
+  },
+
+  /**
    * Batch upsert players to Supabase directly, preserving existing assignments
    */
   async upsertPlayersToSupabase(
@@ -177,7 +298,7 @@ export const rosterService = {
           if (Array.isArray(existingRows)) {
             for (const row of existingRows) {
               if (row && row.battle_group) {
-                existingGroupMap.set(row.id, row.battle_group);
+                existingGroupMap.set(String(row.id), row.battle_group);
               }
             }
           }
@@ -187,11 +308,18 @@ export const rosterService = {
       }
 
       // Format incoming into database rows
-      const rows: SupabasePlayerRow[] = incomingPlayers.map((p) => {
+      const syncedPlayers: Player[] = incomingPlayers.map((p) => {
         const preservedGroup = existingGroupMap.get(p.id);
-        const groupToUse = preservedGroup !== undefined ? preservedGroup : p.battleGroup;
-        return mapPlayerToRow(p, groupToUse);
+        const groupToUse = preservedGroup !== undefined && preservedGroup !== null
+          ? normalizeBattleGroup(preservedGroup)
+          : p.battleGroup;
+        return {
+          ...p,
+          battleGroup: groupToUse,
+        };
       });
+
+      const rows: SupabasePlayerRow[] = syncedPlayers.map((p) => mapPlayerToRow(p, p.battleGroup));
 
       // Upsert in batches of 100
       const chunkSize = 100;
@@ -206,8 +334,10 @@ export const rosterService = {
         }
       }
 
-      // Refetch latest from Supabase
-      return await this.fetchPlayersFromSupabase();
+      syncedPlayers.sort((a, b) => b.currentPower - a.currentPower);
+      this.cachePlayers(syncedPlayers);
+
+      return syncedPlayers;
     } catch (err) {
       console.error('Error during Supabase batch upsert:', err);
       throw err;
