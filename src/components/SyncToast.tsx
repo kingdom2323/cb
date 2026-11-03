@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react';
 import { useRoster } from '../context/RosterContext';
-import { CheckCircle2, AlertTriangle, AlertCircle, Loader2, X, RefreshCw } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, AlertCircle, Loader2, X } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation';
 
 export const SyncToast: React.FC = () => {
   const { isSyncingMightPulse, mightPulseNotice, dismissMightPulseNotice } = useRoster();
+  const { t } = useTranslation();
 
   // Auto-dismiss after 8 seconds
   useEffect(() => {
@@ -19,26 +21,26 @@ export const SyncToast: React.FC = () => {
   }
 
   return (
-    <div className="fixed top-16 right-4 z-50 max-w-md w-full pointer-events-auto font-sans animate-in slide-in-from-top-2 duration-200">
+    <div className="fixed top-14 sm:top-16 right-2 sm:right-4 left-2 sm:left-auto max-w-md w-auto sm:w-full z-50 pointer-events-auto font-sans animate-in slide-in-from-top-2 duration-200">
       {isSyncingMightPulse ? (
         // Sync In Progress Toast
-        <div className="p-3.5 rounded-xl bg-slate-900/95 border border-indigo-500/50 shadow-2xl backdrop-blur-md flex items-center gap-3 text-slate-100">
+        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/95 border border-indigo-500/50 shadow-2xl backdrop-blur-md flex items-center gap-3 text-slate-100">
           <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
             <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-              <span>MightPulse Synchronization</span>
+              <span>MightPulse</span>
             </h4>
             <p className="text-xs text-indigo-300 mt-0.5">
-              Syncing live kingdom data (Kingdom 2323: ERA, FFF, TEA, VIK)...
+              {t.syncingLive}
             </p>
           </div>
         </div>
       ) : mightPulseNotice ? (
         // Result Notification Toast
         <div
-          className={`p-3.5 rounded-xl shadow-2xl backdrop-blur-md flex items-start gap-3 text-slate-100 border ${
+          className={`p-3 sm:p-3.5 rounded-xl shadow-2xl backdrop-blur-md flex items-start gap-3 text-slate-100 border ${
             mightPulseNotice.type === 'success'
               ? 'bg-slate-900/95 border-emerald-500/50 ring-1 ring-emerald-500/20'
               : mightPulseNotice.type === 'warning'
@@ -78,12 +80,12 @@ export const SyncToast: React.FC = () => {
                 }`}
               >
                 {mightPulseNotice.type === 'success'
-                  ? 'MightPulse Live Sync Success'
+                  ? t.syncSuccess
                   : mightPulseNotice.type === 'warning'
-                  ? 'Local CSV Backup Fallback'
-                  : 'Synchronization Error'}
+                  ? t.csvFallback
+                  : t.syncError}
               </h4>
-              <span className="text-[10px] text-slate-500 font-mono">
+              <span className="text-[10px] text-slate-500 font-mono shrink-0">
                 {mightPulseNotice.timestamp}
               </span>
             </div>

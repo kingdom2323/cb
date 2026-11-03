@@ -25,6 +25,7 @@ import {
   Check,
   RotateCcw,
 } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation';
 
 export const AllPlayersView: React.FC = () => {
   const {
@@ -44,6 +45,8 @@ export const AllPlayersView: React.FC = () => {
     batchAssignGroup,
     isAdmin,
   } = useRoster();
+
+  const { t } = useTranslation();
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState<number>(100);
@@ -103,13 +106,13 @@ export const AllPlayersView: React.FC = () => {
           {/* Global Search Bar */}
           <div className="sm:col-span-2">
             <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
-              Search Roster
+              {t.searchRoster}
             </label>
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search player name or ID..."
+                placeholder={t.searchPlaceholder}
                 value={filters.search}
                 onChange={(e) => {
                   setFilter('search', e.target.value);
@@ -132,7 +135,7 @@ export const AllPlayersView: React.FC = () => {
           {/* Alliance Filter */}
           <div>
             <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
-              Alliance
+              {t.alliance}
             </label>
             <select
               value={filters.alliance}
@@ -142,7 +145,7 @@ export const AllPlayersView: React.FC = () => {
               }}
               className="w-full h-9 bg-slate-950 border border-slate-700 hover:border-slate-600 rounded-md px-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold cursor-pointer transition"
             >
-              <option value="ALL">All Alliances</option>
+              <option value="ALL">{t.allAlliances}</option>
               {ALLIANCES.map((a) => (
                 <option key={a} value={a}>
                   {a}
@@ -154,7 +157,7 @@ export const AllPlayersView: React.FC = () => {
           {/* Rank Filter */}
           <div>
             <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
-              Rank
+              {t.rank}
             </label>
             <select
               value={filters.rank}
@@ -164,7 +167,7 @@ export const AllPlayersView: React.FC = () => {
               }}
               className="w-full h-9 bg-slate-950 border border-slate-700 hover:border-slate-600 rounded-md px-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold cursor-pointer transition"
             >
-              <option value="ALL">All Ranks</option>
+              <option value="ALL">{t.allRanks}</option>
               <option value="R5">Leader / R5</option>
               <option value="R4">R4</option>
               <option value="R3">R3</option>
@@ -176,7 +179,7 @@ export const AllPlayersView: React.FC = () => {
           {/* TC level Filter */}
           <div>
             <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
-              TC level
+              {t.tcLevel}
             </label>
             <select
               value={filters.tcLevel}
@@ -186,18 +189,18 @@ export const AllPlayersView: React.FC = () => {
               }}
               className="w-full h-9 bg-slate-950 border border-slate-700 hover:border-slate-600 rounded-md px-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold cursor-pointer transition"
             >
-              <option value="ALL">All TC Levels</option>
+              <option value="ALL">{t.allTcLevels}</option>
               <option value="TG3">TG3</option>
               <option value="TG2">TG2</option>
               <option value="TG1">TG1</option>
-              <option value="NON_TG">TC Standard (1 to 30)</option>
+              <option value="NON_TG">{t.tcStandard}</option>
             </select>
           </div>
 
           {/* Battle Group Filter */}
           <div>
             <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
-              Battle Group
+              {t.battleGroup}
             </label>
             <select
               value={filters.battleGroup}
@@ -207,7 +210,7 @@ export const AllPlayersView: React.FC = () => {
               }}
               className="w-full h-9 bg-slate-950 border border-slate-700 hover:border-slate-600 rounded-md px-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold cursor-pointer transition"
             >
-              <option value="ALL">All Groups</option>
+              <option value="ALL">{t.allGroups}</option>
               {BATTLE_GROUPS.map((g) => (
                 <option key={g} value={g}>
                   {g}
@@ -221,8 +224,8 @@ export const AllPlayersView: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs">
           <div className="flex items-center gap-2 text-slate-400">
             <span>
-              Showing <strong className="text-white font-bold">{filteredPlayers.length}</strong> of{' '}
-              <span className="font-semibold">{players.length}</span> players
+              {t.showing} <strong className="text-white font-bold">{filteredPlayers.length}</strong> {t.of}{' '}
+              <span className="font-semibold">{players.length}</span> {t.players}
             </span>
 
             {hasActiveFilters && (
@@ -232,13 +235,13 @@ export const AllPlayersView: React.FC = () => {
                 className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 underline underline-offset-2 ml-2 font-medium"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>Reset Filters</span>
+                <span>{t.resetFilters}</span>
               </button>
             )}
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-slate-500">Rows per page:</span>
+            <span className="text-[11px] text-slate-500">{t.rowsPerPage}</span>
             {[50, 100, 200, 500].map((size) => (
               <button
                 key={size}
@@ -263,21 +266,21 @@ export const AllPlayersView: React.FC = () => {
       {/* Bulk Action Bar (Admin Only) */}
       {isAdmin && selectedPlayerIds.size > 0 && (
         <div className="bg-indigo-950/70 border border-indigo-500/40 rounded-lg px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-indigo-200">
-              {selectedPlayerIds.size} player{selectedPlayerIds.size > 1 ? 's' : ''} selected
+              {selectedPlayerIds.size} player{selectedPlayerIds.size > 1 ? 's' : ''} {t.selected}
             </span>
             <button
               type="button"
               onClick={clearSelection}
               className="text-slate-400 hover:text-white underline text-[11px]"
             >
-              Clear
+              {t.clear}
             </button>
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-slate-400 text-[11px] font-medium">Assign selected to:</span>
+            <span className="text-slate-400 text-[11px] font-medium">{t.assignSelectedTo}</span>
             {BATTLE_GROUPS.map((group) => (
               <button
                 key={group}
@@ -320,13 +323,13 @@ export const AllPlayersView: React.FC = () => {
                     />
                   </th>
                 )}
-                <th className="py-2.5 px-2 w-10 text-center font-bold">#</th>
+                <th className="py-2.5 px-2 w-10 text-center font-bold">{t.colIndex}</th>
                 <th
                   onClick={() => handleSort('alliance')}
                   className="py-2.5 px-3 cursor-pointer hover:text-white group"
                 >
                   <div className="flex items-center gap-1 font-bold">
-                    <span>Alliance</span>
+                    <span>{t.colAlliance}</span>
                     {renderSortIcon('alliance')}
                   </div>
                 </th>
@@ -335,7 +338,7 @@ export const AllPlayersView: React.FC = () => {
                   className="py-2.5 px-3 cursor-pointer hover:text-white group w-20"
                 >
                   <div className="flex items-center gap-1 font-bold">
-                    <span>Rank</span>
+                    <span>{t.colRank}</span>
                     {renderSortIcon('rank')}
                   </div>
                 </th>
@@ -344,17 +347,17 @@ export const AllPlayersView: React.FC = () => {
                   className="py-2.5 px-3 cursor-pointer hover:text-white group"
                 >
                   <div className="flex items-center gap-1 font-bold">
-                    <span>Player Name</span>
+                    <span>{t.colName}</span>
                     {renderSortIcon('name')}
                   </div>
                 </th>
-                <th className="py-2.5 px-3 font-bold">ID</th>
+                <th className="py-2.5 px-3 font-bold hidden md:table-cell">{t.colId}</th>
                 <th
                   onClick={() => handleSort('currentPower')}
                   className="py-2.5 px-3 cursor-pointer hover:text-white group text-right"
                 >
                   <div className="flex items-center justify-end gap-1 font-bold">
-                    <span>Power</span>
+                    <span>{t.colPower}</span>
                     {renderSortIcon('currentPower')}
                   </div>
                 </th>
@@ -363,7 +366,7 @@ export const AllPlayersView: React.FC = () => {
                   className="py-2.5 px-3 cursor-pointer hover:text-white group"
                 >
                   <div className="flex items-center gap-1 font-bold">
-                    <span>TC level</span>
+                    <span>{t.colTcLevel}</span>
                     {renderSortIcon('tcLevel')}
                   </div>
                 </th>
@@ -372,7 +375,7 @@ export const AllPlayersView: React.FC = () => {
                   className="py-2.5 px-3 cursor-pointer hover:text-white group min-w-[160px]"
                 >
                   <div className="flex items-center gap-1 font-bold">
-                    <span>Battle Group</span>
+                    <span>{t.colBattleGroup}</span>
                     {renderSortIcon('battleGroup')}
                   </div>
                 </th>
@@ -446,10 +449,10 @@ export const AllPlayersView: React.FC = () => {
 
                       {/* Name with Alliance tag */}
                       <td className="py-2 px-3 font-medium text-white">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-100">{player.name}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-bold text-slate-100 truncate">{player.name}</span>
                           <span
-                            className={`text-[9px] px-1 rounded uppercase font-bold opacity-85 ${allianceStyle.badge}`}
+                            className={`text-[9px] px-1 rounded uppercase font-bold opacity-85 ${allianceStyle.badge} shrink-0`}
                             title={`Alliance: ${player.alliance}`}
                           >
                             {player.alliance}
@@ -458,7 +461,7 @@ export const AllPlayersView: React.FC = () => {
                       </td>
 
                       {/* ID with 1-click copy */}
-                      <td className="py-2 px-3 text-slate-400 text-[11px] font-medium">
+                      <td className="py-2 px-3 text-slate-400 text-[11px] font-medium hidden md:table-cell">
                         <button
                           type="button"
                           onClick={(e) => handleCopyId(player.id, e)}
@@ -506,7 +509,7 @@ export const AllPlayersView: React.FC = () => {
                           <span
                             className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${groupStyle.badge}`}
                           >
-                            {player.battleGroup || 'Unassigned'}
+                            {player.battleGroup || t.unassigned}
                           </span>
                         )}
                       </td>
@@ -523,7 +526,7 @@ export const AllPlayersView: React.FC = () => {
       <div className="md:hidden space-y-2">
         {paginatedPlayers.length === 0 ? (
           <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 text-center text-xs text-slate-500">
-            No players found matching current filters.
+            {t.noPlayersFound}
           </div>
         ) : (
           paginatedPlayers.map((player) => {
@@ -548,16 +551,16 @@ export const AllPlayersView: React.FC = () => {
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${allianceStyle.badge}`}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${allianceStyle.badge}`}
                     >
                       {player.alliance}
                     </span>
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] ${rankStyle}`}
+                      className={`px-1.5 py-0.5 rounded text-[10px] shrink-0 ${rankStyle}`}
                     >
                       {player.rank}
                     </span>
-                    <span className="font-bold text-white text-sm truncate">{player.name}</span>
+                    <span className="font-bold text-white text-sm truncate min-w-0">{player.name}</span>
                   </div>
 
                   {isAdmin && (
@@ -566,7 +569,7 @@ export const AllPlayersView: React.FC = () => {
                       checked={isSelected}
                       onChange={() => toggleSelectPlayer(player.id)}
                       onClick={(e) => e.stopPropagation()}
-                      className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0"
+                      className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 shrink-0"
                     />
                   )}
                 </div>
@@ -574,31 +577,31 @@ export const AllPlayersView: React.FC = () => {
                 {/* Middle Row: Power, TC Level */}
                 <div className="grid grid-cols-2 gap-2 text-xs py-1.5 border-y border-slate-800/80 my-2">
                   <div>
-                    <span className="text-slate-500 text-[10px] block uppercase font-bold">Power</span>
+                    <span className="text-slate-500 text-[10px] block uppercase font-bold">{t.colPower}</span>
                     <span className="font-bold text-amber-300">
                       {formatPower(player.currentPower)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-500 text-[10px] block uppercase font-bold">TC level</span>
+                    <span className="text-slate-500 text-[10px] block uppercase font-bold">{t.colTcLevel}</span>
                     <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] ${tcBadgeStyle}`}>
                       {formattedLevel}
                     </span>
                   </div>
                 </div>
 
-                {/* Bottom Row: ID and Group (Editable for Admin, Badge for Public) */}
-                <div className="flex items-center justify-between gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                {/* Bottom Row: ID (shortened) and Group (Editable for Admin, Badge for Public) */}
+                <div className="flex items-center justify-between gap-2 pt-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
                     onClick={(e) => handleCopyId(player.id, e)}
-                    className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 font-medium"
+                    className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 font-medium min-w-0"
                   >
-                    <span>ID: {player.id}</span>
+                    <span className="truncate">ID: {player.id}</span>
                     {copiedId === player.id ? (
-                      <Check className="w-3 h-3 text-emerald-400" />
+                      <Check className="w-3 h-3 text-emerald-400 shrink-0" />
                     ) : (
-                      <Copy className="w-3 h-3 text-slate-500" />
+                      <Copy className="w-3 h-3 text-slate-500 shrink-0" />
                     )}
                   </button>
 
@@ -606,7 +609,7 @@ export const AllPlayersView: React.FC = () => {
                     <select
                       value={player.battleGroup}
                       onChange={(e) => updatePlayerGroup(player.id, e.target.value as BattleGroup)}
-                      className={`text-xs font-bold rounded px-2 py-1 border bg-slate-950 focus:outline-none ${groupStyle.badge}`}
+                      className={`text-xs font-bold rounded px-2 py-1 border bg-slate-950 focus:outline-none shrink-0 ${groupStyle.badge}`}
                     >
                       {BATTLE_GROUPS.map((g) => (
                         <option key={g} value={g} className="bg-slate-900 text-slate-200">
@@ -616,9 +619,9 @@ export const AllPlayersView: React.FC = () => {
                     </select>
                   ) : (
                     <span
-                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${groupStyle.badge}`}
+                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${groupStyle.badge}`}
                     >
-                      {player.battleGroup || 'Unassigned'}
+                      {player.battleGroup || t.unassigned}
                     </span>
                   )}
                 </div>

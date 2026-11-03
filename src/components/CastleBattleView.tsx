@@ -24,9 +24,11 @@ import {
   UserPlus,
   X,
 } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation';
 
 export const CastleBattleView: React.FC = () => {
   const { players, groupStats, updatePlayerGroup, batchAssignGroup, isAdmin } = useRoster();
+  const { t } = useTranslation();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAllianceFilter, setSelectedAllianceFilter] = useState<Alliance | 'ALL'>('ALL');
@@ -117,7 +119,7 @@ export const CastleBattleView: React.FC = () => {
     if (!isAdmin) return;
     const ids = playersByGroup[group].map((p) => p.id);
     if (ids.length === 0) return;
-    if (window.confirm(`Remove all ${ids.length} players from ${group} back to unallocated reserve?`)) {
+    if (window.confirm(t.confirmClearGroup.replace('{count}', String(ids.length)).replace('{group}', group))) {
       batchAssignGroup(ids, 'Unassigned');
     }
   };
@@ -205,15 +207,15 @@ export const CastleBattleView: React.FC = () => {
                 title="Assign unallocated players into battle groups"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>Assign Reserves ({totalUnassignedCount})</span>
+                <span>{t.addPlayers} ({totalUnassignedCount})</span>
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Mobile Tab Switcher: 5 Active Battle Groups */}
-      <div className="xl:hidden flex rounded-lg bg-slate-950 p-1 border border-slate-800 overflow-x-auto text-xs gap-1">
+      {/* Mobile Tab Switcher: 5 Active Battle Groups - horizontally scrollable */}
+      <div className="xl:hidden flex overflow-x-auto gap-1 pb-1 scrollbar-hide rounded-lg bg-slate-950 p-1 border border-slate-800 text-xs">
         {ACTIVE_BATTLE_GROUPS.map((group) => {
           const count = playersByGroup[group]?.length || 0;
           const isCurrent = mobileActiveGroup === group;
@@ -224,7 +226,7 @@ export const CastleBattleView: React.FC = () => {
               key={group}
               type="button"
               onClick={() => setMobileActiveGroup(group)}
-              className={`flex-1 min-w-[100px] px-2.5 py-1.5 rounded-md text-center transition flex items-center justify-center gap-1.5 ${
+              className={`flex-shrink-0 min-w-[100px] px-2.5 py-1.5 rounded-md text-center transition flex items-center justify-center gap-1.5 ${
                 isCurrent
                   ? `${style.badge} font-bold shadow-sm`
                   : 'text-slate-400 hover:text-slate-200 bg-slate-900/40'
@@ -269,7 +271,7 @@ export const CastleBattleView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleCopyGroupList(group)}
-                      title="Copy roster to clipboard for Discord/Chat"
+                      title={t.copyGroupList}
                       className="p-1 rounded bg-slate-950/60 hover:bg-slate-950 text-slate-300 hover:text-white border border-slate-700/60 transition"
                     >
                       {copiedGroup === group ? (
@@ -364,10 +366,10 @@ export const CastleBattleView: React.FC = () => {
                     return (
                       <div
                         key={player.id}
-                        className="bg-slate-950/70 border border-slate-800/90 hover:border-slate-700 rounded-lg p-2.5 space-y-2 transition shadow-sm"
+                        className="bg-slate-950/70 border border-slate-800/90 hover:border-slate-700 rounded-lg p-2.5 space-y-2 transition shadow-sm min-w-0"
                       >
                         {/* Player Header: Name, Rank, and MANDATORY Alliance Tag */}
-                        <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center justify-between gap-1.5 min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <span className="text-[10px] text-slate-500 w-3.5 text-right font-bold shrink-0">
                               {idx + 1}.
@@ -385,7 +387,7 @@ export const CastleBattleView: React.FC = () => {
                               {player.rank}
                             </span>
                             <span
-                              className="font-bold text-slate-100 text-xs truncate"
+                              className="font-bold text-slate-100 text-xs truncate min-w-0"
                               title={player.name}
                             >
                               {player.name}
@@ -398,9 +400,9 @@ export const CastleBattleView: React.FC = () => {
                         </div>
 
                         {/* Player Details: ID & TC Level */}
-                        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
-                          <span className="text-slate-500 font-medium">ID: {player.id}</span>
-                          <span className={`px-1.5 py-0.2 rounded text-[10px] ${tcBadgeStyle}`}>
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60 min-w-0">
+                          <span className="text-slate-500 font-medium truncate min-w-0">ID: {player.id}</span>
+                          <span className={`px-1.5 py-0.2 rounded text-[10px] shrink-0 ${tcBadgeStyle}`}>
                             {formattedLevel}
                           </span>
                         </div>
@@ -418,7 +420,7 @@ export const CastleBattleView: React.FC = () => {
                                   Move to: {g}
                                 </option>
                               ))}
-                              <option value="Unassigned">Remove (Unassign)</option>
+                              <option value="Unassigned">{t.unassigned}</option>
                             </select>
                           </div>
                         )}
@@ -503,18 +505,18 @@ export const CastleBattleView: React.FC = () => {
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${allianceStyle.badge}`}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${allianceStyle.badge}`}
                         >
                           {player.alliance}
                         </span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${rankStyle}`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] shrink-0 ${rankStyle}`}>
                           {player.rank}
                         </span>
                         <span className="font-bold text-white text-xs truncate">{player.name}</span>
-                        <span className="text-amber-300 font-bold ml-1">
+                        <span className="text-amber-300 font-bold ml-1 shrink-0">
                           {formatPower(player.currentPower)}
                         </span>
-                        <span className={`px-1.5 py-0.2 rounded text-[10px] ${tcBadgeStyle}`}>
+                        <span className={`px-1.5 py-0.2 rounded text-[10px] shrink-0 ${tcBadgeStyle}`}>
                           {formattedLevel}
                         </span>
                       </div>

@@ -3,9 +3,11 @@ import { useRoster } from '../context/RosterContext';
 import { ALLIANCE_STYLES, formatPower, formatFullNumber } from '../utils/formatters';
 import { ALLIANCES, Alliance } from '../types/roster';
 import { Users, Zap, Swords } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation';
 
 export const StatsBar: React.FC = () => {
   const { players, totalPower, allianceStats, groupStats, filters, setFilter } = useRoster();
+  const { t } = useTranslation();
 
   const activeAssignedCount =
     (groupStats['Castle']?.count || 0) +
@@ -21,20 +23,20 @@ export const StatsBar: React.FC = () => {
 
   return (
     <div className="bg-slate-900/80 border-b border-slate-800 text-xs">
-      <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-2">
         {/* Core Global Stats */}
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-slate-300">
-            <Users className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="text-slate-400">Total Players:</span>
+            <Users className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span className="text-slate-400">{t.totalPlayers}:</span>
             <span className="font-bold text-white">{players.length}</span>
           </div>
 
           <div className="h-3 w-px bg-slate-800 hidden sm:block" />
 
           <div className="flex items-center gap-1.5 text-slate-300">
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-slate-400">Combined Power:</span>
+            <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="text-slate-400">{t.combinedPower}:</span>
             <span className="font-bold text-amber-300" title={formatFullNumber(totalPower)}>
               {formatPower(totalPower)}
             </span>
@@ -43,16 +45,16 @@ export const StatsBar: React.FC = () => {
           <div className="h-3 w-px bg-slate-800 hidden sm:block" />
 
           <div className="flex items-center gap-1.5 text-slate-300">
-            <Swords className="w-3.5 h-3.5 text-rose-400" />
-            <span className="text-slate-400">Battle Assigned:</span>
+            <Swords className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            <span className="text-slate-400">{t.battleAssigned}:</span>
             <span className="font-bold text-white">{activeAssignedCount}</span>
-            <span className="text-slate-500">({formatPower(activeAssignedPower)})</span>
+            <span className="text-slate-500 hidden sm:inline">({formatPower(activeAssignedPower)})</span>
           </div>
         </div>
 
         {/* Alliance quick pill stats */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-slate-500 text-[11px] font-medium hidden md:inline">Alliances:</span>
+          <span className="text-slate-500 text-[11px] font-medium hidden md:inline">{t.alliances}:</span>
           {ALLIANCES.map((alliance: Alliance) => {
             const stat = allianceStats[alliance];
             const isSelected = filters.alliance === alliance;
@@ -70,9 +72,7 @@ export const StatsBar: React.FC = () => {
                 }`}
                 title={`Filter by ${alliance} (${stat?.count || 0} players, ${formatPower(stat?.totalPower || 0)})`}
               >
-                <span className={isSelected ? 'text-inherit font-bold' : style.text}>
-                  {alliance}
-                </span>
+                <span className={isSelected ? 'text-inherit font-bold' : style.text}>{alliance}</span>
                 <span className="text-slate-400 opacity-90">{stat?.count || 0}</span>
                 <span className="text-slate-400 text-[10px] hidden sm:inline">
                   [{formatPower(stat?.totalPower || 0)}]

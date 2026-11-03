@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useRoster } from '../context/RosterContext';
 import { ShieldCheck, Lock, X, AlertCircle } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation';
 
 export const AdminLoginModal: React.FC = () => {
   const { isLoginModalOpen, setIsLoginModalOpen, loginAdmin } = useRoster();
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -12,7 +14,7 @@ export const AdminLoginModal: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!password.trim()) {
-      setError('Please enter the admin password');
+      setError(t.pleaseEnterPassword);
       return;
     }
 
@@ -22,7 +24,7 @@ export const AdminLoginModal: React.FC = () => {
       setError(null);
       setIsLoginModalOpen(false);
     } else {
-      setError('Incorrect admin password. Please try again.');
+      setError(t.incorrectPassword);
     }
   };
 
@@ -42,7 +44,7 @@ export const AdminLoginModal: React.FC = () => {
               <Lock className="w-4 h-4" />
             </div>
             <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-              Admin Authentication
+              {t.adminAuth}
             </h3>
           </div>
           <button
@@ -57,17 +59,17 @@ export const AdminLoginModal: React.FC = () => {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <p className="text-xs text-slate-400">
-            Enter the admin password to unlock roster editing, battle allocations, and CSV upload permissions.
+            {t.enterAdminPasswordDesc}
           </p>
 
           <div>
             <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1.5">
-              Admin Password
+              {t.adminPasswordLabel}
             </label>
             <input
               type="password"
               autoFocus
-              placeholder="Enter password..."
+              placeholder={t.enterPasswordPlaceholder}
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
@@ -90,14 +92,14 @@ export const AdminLoginModal: React.FC = () => {
               onClick={handleClose}
               className="px-3 py-1.5 rounded text-xs font-bold text-slate-400 hover:text-white transition"
             >
-              Cancel
+              {t.cancel}
             </button>
             <button
               type="submit"
               className="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Authenticate</span>
+              <span>{t.authenticate}</span>
             </button>
           </div>
         </form>

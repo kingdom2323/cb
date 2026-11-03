@@ -14,6 +14,7 @@ import { PlayerDetailsModal } from './PlayerDetailsModal';
 import { TacticalRosterDrawer } from './TacticalRosterDrawer';
 import { BattleGroup, Alliance, ALLIANCES } from '../../types/roster';
 import { ALLIANCE_STYLES, GROUP_STYLES, formatPower } from '../../utils/formatters';
+import { useTranslation } from '../../i18n/useTranslation';
 import {
   Compass,
   Crosshair,
@@ -33,6 +34,7 @@ import {
 
 export const KingdomMapView: React.FC = () => {
   const { players, isAdmin, updatePlayerGroup, setActiveTab } = useRoster();
+  const { t } = useTranslation();
 
   // Map state
   const [camera, setCamera] = useState<MapCoordinate>({ x: 597, y: 597 }); // Defaults to King's Castle center
@@ -97,7 +99,7 @@ export const KingdomMapView: React.FC = () => {
   return (
     <div className="space-y-3 font-sans pb-8 select-none">
       {/* Top Tactical Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 shadow-lg flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 shadow-lg flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           {/* Back to roster button */}
           <button
@@ -107,16 +109,16 @@ export const KingdomMapView: React.FC = () => {
             title="Return to Roster View"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Roster</span>
+            <span>{t.roster}</span>
           </button>
 
           <div>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <h1 className="text-base font-extrabold text-white tracking-wider uppercase">
-                KINGDOM MAP
+                {t.kingdomMap}
               </h1>
-              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded font-mono font-bold">
+              <span className="hidden sm:inline text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded font-mono font-bold">
                 1200 x 1200 KVK GRID
               </span>
             </div>
@@ -131,12 +133,12 @@ export const KingdomMapView: React.FC = () => {
           {isAdmin ? (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-              <span>Admin Tactical Control Active</span>
+              <span>{t.adminTacticalControl}</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-slate-400 text-xs font-medium">
               <Lock className="w-3.5 h-3.5 text-amber-400" />
-              <span>Read-Only Observer Mode</span>
+              <span>{t.readOnlyObserver}</span>
             </div>
           )}
 
@@ -151,7 +153,7 @@ export const KingdomMapView: React.FC = () => {
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>Roster Drawer</span>
+            <span>{t.rosterDrawer}</span>
             <span className="px-1.5 py-0.2 rounded-full bg-slate-900 text-[10px] font-bold text-slate-300">
               {players.length}
             </span>
@@ -160,12 +162,12 @@ export const KingdomMapView: React.FC = () => {
       </div>
 
       {/* Tactical Toolbar: Jump-to, Quick Landmarks, Tools, Filters */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-md flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 shadow-md flex flex-wrap md:flex-nowrap items-center justify-between gap-2 text-xs overflow-x-auto">
         {/* Left: Quick Jump Coordinates & Landmarks */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Jump To Form */}
           <form onSubmit={handleJump} className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-            <span className="text-[10px] uppercase font-bold text-slate-500 px-1">Jump:</span>
+            <span className="text-[10px] uppercase font-bold text-slate-500 px-1">{t.jump}:</span>
             <input
               type="number"
               min={0}
@@ -189,12 +191,12 @@ export const KingdomMapView: React.FC = () => {
               type="submit"
               className="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition"
             >
-              Go
+              {t.go}
             </button>
           </form>
 
           {/* Quick Landmark Jump Buttons */}
-          <div className="flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1">
             <button
               type="button"
               onClick={() => handleJumpToLandmark(TACTICAL_LANDMARKS.castle.coord)}
@@ -252,7 +254,7 @@ export const KingdomMapView: React.FC = () => {
             title="Measure Manhattan grid distance between any two tiles"
           >
             <Ruler className="w-3.5 h-3.5 text-sky-400" />
-            <span>Measure Distance</span>
+            <span>{t.measureDistance}</span>
           </button>
 
           {/* Footprint Tool Dropdown */}
@@ -263,7 +265,7 @@ export const KingdomMapView: React.FC = () => {
               onChange={(e) => setFootprintMode(e.target.value === 'none' ? null : (e.target.value as FootprintType))}
               className="bg-transparent text-xs text-slate-200 font-medium focus:outline-none pr-1"
             >
-              <option value="none">Footprint: Off</option>
+              <option value="none">{t.footprintOff}</option>
               <option value="city_2x2">City (2x2)</option>
               <option value="hq_3x3">Alliance HQ (3x3)</option>
               <option value="beartrap_3x3">Bear Trap (3x3)</option>

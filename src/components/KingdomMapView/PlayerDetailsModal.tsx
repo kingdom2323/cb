@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PlayerWithCoord, getManhattanDistance, TACTICAL_LANDMARKS, estimateMarchSeconds, formatMarchTime } from '../../utils/mapUtils';
 import { formatPower, formatFullNumber, formatTcLevel, getTcLevelBadgeStyle, ALLIANCE_STYLES, GROUP_STYLES } from '../../utils/formatters';
 import { BattleGroup, ACTIVE_BATTLE_GROUPS } from '../../types/roster';
+import { useTranslation } from '../../i18n/useTranslation';
 import {
   X,
   Castle,
@@ -30,6 +31,7 @@ export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({
   onUpdateGroup,
   onCenterOnPlayer,
 }) => {
+  const { t } = useTranslation();
   if (!player) return null;
 
   const [isUpdating, setIsUpdating] = useState(false);
@@ -208,7 +210,7 @@ export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-xs"
           >
             <Navigation className="w-3.5 h-3.5" />
-            <span>Center Camera</span>
+            <span>{t.centerCamera}</span>
           </button>
 
           <button
@@ -216,7 +218,7 @@ export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({
             onClick={onClose}
             className="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition"
           >
-            Close
+            {t.close}
           </button>
         </div>
       </div>

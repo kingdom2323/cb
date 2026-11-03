@@ -14,7 +14,7 @@ import {
 import { PlayerPin } from './PlayerPin';
 import { BattleGroup } from '../../types/roster';
 import { GROUP_STYLES } from '../../utils/formatters';
-import { Castle, Shield, Crosshair, Navigation, Ruler } from 'lucide-react';
+import { Castle, Shield, Crosshair, Navigation, Ruler, Plus, Minus } from 'lucide-react';
 
 interface MapCanvasProps {
   players: PlayerWithCoord[];
@@ -56,6 +56,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [cameraStart, setCameraStart] = useState({ x: 597, y: 597 });
+
+  // Touch pan/pinch-to-zoom state
+  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [touchCameraStart, setTouchCameraStart] = useState({ x: 597, y: 597 });
+  const [lastPinchDist, setLastPinchDist] = useState<number | null>(null);
 
   const [hoverTile, setHoverTile] = useState<MapCoordinate | null>(null);
   const [measureA, setMeasureA] = useState<MapCoordinate | null>(null);
@@ -370,6 +375,72 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     onZoomChange(newZoom);
   };
 
+  // Touch pan and pinch-to-zoom for mobile devices
+  const getTouchDistance = (t1: React.Touch, t2: React.Touch) => {
+    const dx = t1.clientX - t2.clientX;
+    const dy = t1.clientY - t2.clientY;
+    return Math.hypot(dx, dy);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (measureMode && e.touches.length === 1) {
+      const t = e.touches[0];
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        const coord = screenToCoord(t.clientX - rect.left, t.clientY - rect.top);
+        if (!measureA) {
+          setMeasureA(coord);
+          setMeasureB(null);
+        } else if (!measureB) {
+          setMeasureB(coord);
+        } else {
+          setMeasureA(coord);
+          setMeasureB(null);
+        }
+        return;
+      }
+    }
+
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      setTouchStartPos({ x: t.clientX, y: t.clientY });
+      setTouchCameraStart({ x: camera.x, y: camera.y });
+      setLastPinchDist(null);
+    } else if (e.touches.length === 2) {
+      const dist = getTouchDistance(e.touches[0], e.touches[1]);
+      setLastPinchDist(dist);
+      setTouchStartPos(null);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && touchStartPos) {
+      const t = e.touches[0];
+      const dx = t.clientX - touchStartPos.x;
+      const dy = t.clientY - touchStartPos.y;
+      const newX = Math.round(touchCameraStart.x - dx / effectiveTileSize);
+      const newY = Math.round(touchCameraStart.y - dy / effectiveTileSize);
+
+      onCameraChange({
+        x: Math.max(0, Math.min(GRID_SIZE - 1, newX)),
+        y: Math.max(0, Math.min(GRID_SIZE - 1, newY)),
+      });
+    } else if (e.touches.length === 2 && lastPinchDist !== null) {
+      const currentDist = getTouchDistance(e.touches[0], e.touches[1]);
+      const factor = currentDist / lastPinchDist;
+      if (Math.abs(factor - 1) > 0.02) {
+        const newZoom = Math.max(0.25, Math.min(2.5, Number((zoom * factor).toFixed(2))));
+        onZoomChange(newZoom);
+        setLastPinchDist(currentDist);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStartPos(null);
+    setLastPinchDist(null);
+  };
+
   // Admin Drag & Drop Target Handlers for Landmarks
   const handleDragOver = (e: React.DragEvent) => {
     if (!isAdmin) return;
@@ -394,7 +465,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onWheel={handleWheel}
-      className={`relative w-full h-[700px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl select-none cursor-${
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      style={{ touchAction: 'none' }}
+      className={`relative w-full h-[480px] sm:h-[600px] lg:h-[720px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl select-none cursor-${
         measureMode ? 'crosshair' : isDragging ? 'grabbing' : 'grab'
       }`}
     >
@@ -481,21 +557,41 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         </div>
       </div>
 
+      {/* Floating Zoom Controls for Mobile & Quick Desktop Use */}
+      <div className="absolute bottom-16 right-3 z-30 flex flex-col items-center gap-1.5 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => onZoomChange(Math.min(2.5, Number((zoom + 0.25).toFixed(2))))}
+          className="w-8 h-8 rounded-lg bg-slate-900/90 hover:bg-slate-800 active:bg-slate-700 border border-slate-700 text-white flex items-center justify-center font-bold text-base shadow-lg transition active:scale-95"
+          title="Zoom In"
+        >
+          <Plus className="w-4 h-4 text-slate-200" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onZoomChange(Math.max(0.25, Number((zoom - 0.25).toFixed(2))))}
+          className="w-8 h-8 rounded-lg bg-slate-900/90 hover:bg-slate-800 active:bg-slate-700 border border-slate-700 text-white flex items-center justify-center font-bold text-base shadow-lg transition active:scale-95"
+          title="Zoom Out"
+        >
+          <Minus className="w-4 h-4 text-slate-200" />
+        </button>
+      </div>
+
       {/* Bottom Floating HUD */}
       <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2 pointer-events-none font-sans">
         {/* Coordinates HUD */}
-        <div className="bg-slate-900/90 backdrop-blur border border-slate-800 rounded-lg px-3 py-1.5 shadow-xl text-xs text-slate-300 font-mono flex items-center gap-3">
+        <div className="bg-slate-900/90 backdrop-blur border border-slate-800 rounded-lg px-2.5 sm:px-3 py-1.5 shadow-xl text-[10px] sm:text-xs text-slate-300 font-mono flex items-center gap-2 sm:gap-3 flex-wrap">
           <div className="flex items-center gap-1.5">
-            <Crosshair className="w-3.5 h-3.5 text-indigo-400" />
+            <Crosshair className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
             <span>
-              Cursor: <strong className="text-white">({hoverTile ? `${hoverTile.x}, ${hoverTile.y}` : `${camera.x}, ${camera.y}`})</strong>
+              <strong className="text-white">({hoverTile ? `${hoverTile.x}, ${hoverTile.y}` : `${camera.x}, ${camera.y}`})</strong>
             </span>
           </div>
 
-          <span className="text-slate-700">|</span>
+          <span className="text-slate-700 hidden sm:inline">|</span>
 
           <div>
-            Castle Dist:{' '}
+            Castle:{' '}
             <strong className="text-rose-400">
               {hoverTile ? getManhattanDistance(hoverTile, TACTICAL_LANDMARKS.castle.coord) : getManhattanDistance(camera, TACTICAL_LANDMARKS.castle.coord)}{' '}
               tiles

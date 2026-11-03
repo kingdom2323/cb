@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { PlayerWithCoord } from '../../utils/mapUtils';
 import { formatPower, formatTcLevel, getTcLevelBadgeStyle, ALLIANCE_STYLES, GROUP_STYLES } from '../../utils/formatters';
 import { Alliance, BattleGroup, ALLIANCES, ACTIVE_BATTLE_GROUPS } from '../../types/roster';
+import { useTranslation } from '../../i18n/useTranslation';
 import {
   Search,
   Users,
@@ -32,6 +33,7 @@ export const TacticalRosterDrawer: React.FC<TacticalRosterDrawerProps> = ({
   isAdmin,
   onUpdateGroup,
 }) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [selectedAlliance, setSelectedAlliance] = useState<Alliance | 'ALL'>('ALL');
   const [selectedGroup, setSelectedGroup] = useState<BattleGroup | 'ALL'>('ALL');
@@ -77,7 +79,7 @@ export const TacticalRosterDrawer: React.FC<TacticalRosterDrawerProps> = ({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search player or ID..."
+            placeholder={t.searchPlaceholder}
             className="w-full bg-slate-950 border border-slate-800 rounded pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
           />
         </div>
@@ -93,7 +95,7 @@ export const TacticalRosterDrawer: React.FC<TacticalRosterDrawerProps> = ({
                 : 'bg-slate-800 text-slate-400 hover:text-slate-200'
             }`}
           >
-            All
+            {t.drawerAll}
           </button>
           {ALLIANCES.map((tag) => (
             <button
@@ -113,19 +115,19 @@ export const TacticalRosterDrawer: React.FC<TacticalRosterDrawerProps> = ({
 
         {/* Battle Group dropdown filter */}
         <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-[10px] uppercase font-bold text-slate-500 shrink-0">Group:</span>
+          <span className="text-[10px] uppercase font-bold text-slate-500 shrink-0">{t.battleGroup}:</span>
           <select
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value as BattleGroup | 'ALL')}
             className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
           >
-            <option value="ALL">All Groups</option>
+            <option value="ALL">{t.allGroups}</option>
             <option value="Castle">Castle</option>
             <option value="Turret 1">Turret 1</option>
             <option value="Turret 2">Turret 2</option>
             <option value="Turret 3">Turret 3</option>
             <option value="Inactive">Inactive</option>
-            <option value="Unassigned">Unassigned</option>
+            <option value="Unassigned">{t.unassigned}</option>
           </select>
         </div>
       </div>
@@ -134,7 +136,7 @@ export const TacticalRosterDrawer: React.FC<TacticalRosterDrawerProps> = ({
       <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60 p-2 space-y-1">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500 font-medium">
-            No matching players found.
+            {t.noPlayersFound}
           </div>
         ) : (
           filtered.map((p) => {
@@ -183,7 +185,7 @@ export const TacticalRosterDrawer: React.FC<TacticalRosterDrawerProps> = ({
                   </span>
 
                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${groupStyle.badge}`}>
-                    {p.battleGroup || 'Unassigned'}
+                    {p.battleGroup || t.unassigned}
                   </span>
                 </div>
 
@@ -193,7 +195,7 @@ export const TacticalRosterDrawer: React.FC<TacticalRosterDrawerProps> = ({
                     className="pt-1.5 border-t border-slate-800/60 flex items-center justify-between gap-1"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <span className="text-[9px] uppercase font-bold text-slate-500">Quick Assign:</span>
+                    <span className="text-[9px] uppercase font-bold text-slate-500">{t.quickAssign}:</span>
                     <select
                       value={p.battleGroup || 'Unassigned'}
                       onChange={(e) => onUpdateGroup(p.id, e.target.value as BattleGroup)}
@@ -204,7 +206,7 @@ export const TacticalRosterDrawer: React.FC<TacticalRosterDrawerProps> = ({
                       <option value="Turret 2">Turret 2</option>
                       <option value="Turret 3">Turret 3</option>
                       <option value="Inactive">Inactive</option>
-                      <option value="Unassigned">Unassigned</option>
+                      <option value="Unassigned">{t.unassigned}</option>
                     </select>
                   </div>
                 )}
