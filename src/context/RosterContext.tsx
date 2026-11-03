@@ -22,6 +22,7 @@ import {
 } from '../types/roster';
 import { rosterService, mapRowToPlayer } from '../services/rosterService';
 import { supabase } from '../services/supabaseClient';
+import { mightPulseService, MightPulseSyncResult } from '../services/mightPulseService';
 import { formatTcLevel } from '../utils/formatters';
 
 const ADMIN_PASSWORD = 'kvk2323r4';
@@ -61,6 +62,11 @@ interface RosterContextType {
   logoutAdmin: () => void;
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
+  // MightPulse Live Sync
+  syncWithMightPulse: (preserveGroups?: boolean) => Promise<MightPulseSyncResult>;
+  isSyncingMightPulse: boolean;
+  mightPulseNotice: { type: 'success' | 'warning' | 'error'; message: string; timestamp: string } | null;
+  dismissMightPulseNotice: () => void;
 }
 
 const defaultFilters: RosterFilters = {
@@ -156,6 +162,16 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [isSyncingMightPulse, setIsSyncingMightPulse] = useState<boolean>(false);
+  const [mightPulseNotice, setMightPulseNotice] = useState<{
+    type: 'success' | 'warning' | 'error';
+    message: string;
+    timestamp: string;
+  } | null>(null);
+
+  const dismissMightPulseNotice = useCallback(() => {
+    setMightPulseNotice(null);
+  }, []);
 
   const loginAdmin = useCallback((password: string): boolean => {
     if (password === ADMIN_PASSWORD) {
@@ -347,7 +363,46 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSelectedPlayerIds(new Set());
   }, [isAdmin]);
 
-  // Import players: batch upsert to Supabase
+  // MightPulse live synchronization with local CSV fallback and Supabase upsert
+  const syncWithMightPulse = useCallback(
+    async (preserveGroups = true): Promise<MightPulseSyncResult> => {
+      if (!isAdmin) {
+        throw new Error('Admin authentication required to sync live data');
+      }
+
+      setIsSyncingMightPulse(true);
+      setIsDbLoading(true);
+      setDbStatus('syncing');
+
+      try {
+        const result = await mightPulseService.syncKingdomData(preserveGroups);
+        setPlayers(result.players);
+        rosterService.cachePlayers(result.players);
+        setDbStatus('connected');
+
+        setMightPulseNotice({
+          type: result.source === 'mightpulse' ? 'success' : 'warning',
+          message: result.message,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+
+        return result;
+      } catch (err: any) {
+        console.error('MightPulse sync error:', err);
+        setDbStatus('error');
+        setMightPulseNotice({
+          type: 'error',
+          message: `Live data sync failed: ${err.message || 'Unknown error'}`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        throw err;
+      } finally {
+        setIsSyncingMightPulse(false);
+        setIsDbLoading(false);
+      }
+    },
+    [isAdmin]
+  );
   const importPlayers = useCallback(
     async (incoming: Player[], mode: 'merge' | 'replace') => {
       if (!isAdmin) return; // Guard: Only admin can import/upsert
@@ -567,6 +622,10 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         logoutAdmin,
         isLoginModalOpen,
         setIsLoginModalOpen,
+        syncWithMightPulse,
+        isSyncingMightPulse,
+        mightPulseNotice,
+        dismissMightPulseNotice,
       }}
     >
       {children}

@@ -12,5 +12,13 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    proxy: {
+      '/mightpulse-proxy': {
+        target: 'https://api.mightpulse.com',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/mightpulse-proxy/, ''),
+      },
+    },
   },
 });

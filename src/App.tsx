@@ -7,6 +7,7 @@ import { CastleBattleView } from './components/CastleBattleView';
 import { KingdomMapView } from './components/KingdomMapView/KingdomMapView';
 import { ImportModal } from './components/ImportModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { SyncToast } from './components/SyncToast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Database, Loader2, AlertCircle } from 'lucide-react';
 
@@ -17,6 +18,9 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       {/* Sticky Top Header */}
       <Header />
+
+      {/* Floating Sync Notification Toast */}
+      <SyncToast />
 
       {/* High Density Global Metrics Strip */}
       <StatsBar />

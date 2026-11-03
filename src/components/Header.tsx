@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Eye,
   Map,
+  RefreshCw,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -28,6 +29,8 @@ export const Header: React.FC = () => {
     isAdmin,
     logoutAdmin,
     setIsLoginModalOpen,
+    syncWithMightPulse,
+    isSyncingMightPulse,
   } = useRoster();
 
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -146,6 +149,23 @@ export const Header: React.FC = () => {
                 <span className="hidden sm:inline">Admin Mode Active</span>
                 <span className="sm:hidden">Admin</span>
               </span>
+
+              {/* Prominent Admin Refresh from MightPulse Button */}
+              <button
+                type="button"
+                disabled={isSyncingMightPulse}
+                onClick={() => syncWithMightPulse(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold transition shadow-sm border border-emerald-400/30"
+                title="Refresh and sync live data from MightPulse API for Kingdom 2323 (with local CSV fallback)"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingMightPulse ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">
+                  {isSyncingMightPulse ? 'Syncing...' : 'Refresh from MightPulse'}
+                </span>
+                <span className="sm:hidden">
+                  {isSyncingMightPulse ? 'Syncing...' : 'Refresh'}
+                </span>
+              </button>
 
               {/* Secret Tactical Map Link (Admin Dashboard Tool) */}
               <button
