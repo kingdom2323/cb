@@ -200,37 +200,29 @@ export const Header: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setActiveTab(activeTab === 'kingdom-map' ? 'castle-battle' : 'kingdom-map')}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-xs font-bold transition border ${
-                  activeTab === 'kingdom-map'
-                    ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
-                    : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-500/30'
-                }`}
-                title={t.tacticalMap}
+                disabled
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs font-bold transition border bg-slate-800/50 text-slate-500 border-slate-700/50 opacity-50 cursor-not-allowed"
+                title={`${t.tacticalMap} (Disabled)`}
               >
-                <Map className="w-3.5 h-3.5 text-amber-400" />
+                <Map className="w-3.5 h-3.5 text-slate-500" />
                 <span className="hidden xl:inline">{activeTab === 'kingdom-map' ? t.exitMap : t.tacticalMap}</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setIsImportModalOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm"
-                title={t.importCsvs}
+                disabled
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-slate-800/50 text-slate-500 border border-slate-700/50 text-xs font-bold transition opacity-50 cursor-not-allowed"
+                title={`${t.importCsvs} (Disabled)`}
               >
-                <Upload className="w-3.5 h-3.5" />
+                <Upload className="w-3.5 h-3.5 text-slate-500" />
                 <span className="hidden lg:inline">{t.importCsvs}</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm(t.confirmResetAllocations)) {
-                    resetAllAllocations();
-                  }
-                }}
-                className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 transition"
-                title={t.resetAllocations}
+                disabled
+                className="p-1.5 rounded bg-slate-800/50 text-slate-600 border border-slate-700/50 transition opacity-50 cursor-not-allowed"
+                title={`${t.resetAllocations} (Disabled)`}
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
@@ -403,14 +395,11 @@ export const Header: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => { setActiveTab(activeTab === 'kingdom-map' ? 'castle-battle' : 'kingdom-map'); setShowMobileMenu(false); }}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded text-xs font-bold transition border flex-1 justify-center ${
-                    activeTab === 'kingdom-map'
-                      ? 'bg-amber-600 text-white border-amber-500'
-                      : 'bg-slate-800 text-amber-300 border-amber-500/30'
-                  }`}
+                  disabled
+                  className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-bold transition border flex-1 justify-center bg-slate-800/50 text-slate-500 border-slate-700/50 opacity-50 cursor-not-allowed"
+                  title={`${t.tacticalMap} (Disabled)`}
                 >
-                  <Map className="w-3.5 h-3.5" />
+                  <Map className="w-3.5 h-3.5 text-slate-500" />
                   <span>{activeTab === 'kingdom-map' ? t.exitMap : t.tacticalMap}</span>
                 </button>
               </div>
@@ -419,10 +408,11 @@ export const Header: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => { setIsImportModalOpen(true); setShowMobileMenu(false); }}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex-1 justify-center"
+                  disabled
+                  className="flex items-center gap-1.5 px-3 py-2 rounded bg-slate-800/50 text-slate-500 border border-slate-700/50 text-xs font-bold transition flex-1 justify-center opacity-50 cursor-not-allowed"
+                  title={`${t.importCsvs} (Disabled)`}
                 >
-                  <Upload className="w-3.5 h-3.5" />
+                  <Upload className="w-3.5 h-3.5 text-slate-500" />
                   <span>{t.importCsvs}</span>
                 </button>
 
@@ -437,14 +427,9 @@ export const Header: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.confirm(t.confirmResetAllocations)) {
-                      resetAllAllocations();
-                      setShowMobileMenu(false);
-                    }
-                  }}
-                  className="p-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 transition"
-                  title={t.resetAllocations}
+                  disabled
+                  className="p-2 rounded bg-slate-800/50 text-slate-600 border border-slate-700/50 transition opacity-50 cursor-not-allowed"
+                  title={`${t.resetAllocations} (Disabled)`}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>

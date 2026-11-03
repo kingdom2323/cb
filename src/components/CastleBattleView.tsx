@@ -285,9 +285,9 @@ export const CastleBattleView: React.FC = () => {
                     {isAdmin && groupList.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => handleClearGroup(group)}
-                        title="Remove all members back to unallocated reserve"
-                        className="p-1 rounded bg-slate-950/60 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 border border-slate-700/60 transition"
+                        disabled
+                        className="p-1 rounded bg-slate-950/40 text-slate-600 border border-slate-800/60 opacity-50 cursor-not-allowed transition"
+                        title="Remove all members back to unallocated reserve (Disabled)"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                       </button>
