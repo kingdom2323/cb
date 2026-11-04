@@ -22,6 +22,7 @@ interface PlayerDetailsModalProps {
   isAdmin: boolean;
   onUpdateGroup: (playerId: string, group: BattleGroup) => Promise<void>;
   onCenterOnPlayer: (player: PlayerWithCoord) => void;
+  onToggleCounterTeam?: (playerId: string) => Promise<void>;
 }
 
 export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({
@@ -30,6 +31,7 @@ export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({
   isAdmin,
   onUpdateGroup,
   onCenterOnPlayer,
+  onToggleCounterTeam,
 }) => {
   const { t } = useTranslation();
   if (!player) return null;
@@ -74,6 +76,11 @@ export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({
             <h2 className="text-base font-bold text-white truncate max-w-[220px]">
               {player.name}
             </h2>
+            {player.isCounterTeam && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider">
+                Counter Team
+              </span>
+            )}
           </div>
           <button
             type="button"
@@ -197,6 +204,37 @@ export const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Counter Team Toggle */}
+          {onToggleCounterTeam && (
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <div className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Counter Team Status</span>
+              </div>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => onToggleCounterTeam(player.id)}
+                  className={`w-full px-3 py-2 rounded-lg text-xs font-bold transition border flex items-center justify-center gap-2 ${
+                    player.isCounterTeam
+                      ? 'bg-cyan-500/15 border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/25'
+                      : 'bg-slate-950 border-slate-700 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-400'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  {player.isCounterTeam ? 'Remove from Counter Team' : 'Add to Counter Team'}
+                </button>
+              ) : (
+                player.isCounterTeam && (
+                  <div className="flex items-center gap-2 text-xs text-cyan-300 bg-cyan-950/30 border border-cyan-500/30 px-3 py-1.5 rounded">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Counter Team Member</span>
+                  </div>
+                )
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

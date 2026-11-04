@@ -38,11 +38,12 @@ export interface Player {
   tgLevel: string; // Formatted as TG1, TG2, TG3, or TC1 to TC30
   alliance: Alliance;
   battleGroup: BattleGroup;
+  isCounterTeam?: boolean; // Dual categorization: Counter Team designation
   updatedAt?: string;
   notes?: string;
 }
 
-export type SortField = 'currentPower' | 'name' | 'rank' | 'tcLevel' | 'alliance' | 'battleGroup';
+export type SortField = 'currentPower' | 'name' | 'rank' | 'tcLevel' | 'alliance' | 'battleGroup' | 'isCounterTeam';
 export type SortDirection = 'asc' | 'desc';
 
 export interface RosterFilters {
@@ -51,6 +52,7 @@ export interface RosterFilters {
   rank: string | 'ALL';
   tcLevel: string | 'ALL';
   battleGroup: BattleGroup | 'ALL';
+  counterTeam?: 'ALL' | 'YES' | 'NO';
 }
 
 export interface GroupStats {
@@ -59,6 +61,8 @@ export interface GroupStats {
   totalPower: number;
   topPower: number;
   allianceBreakdown: Record<Alliance, number>;
+  counterTeamCount?: number;
+  counterTeamPower?: number;
 }
 
 export interface AllianceStats {
@@ -77,4 +81,5 @@ export interface SupabasePlayerRow {
   current_power: number;
   tg_level: string;
   battle_group: string | null;
+  is_counter_team?: boolean;
 }

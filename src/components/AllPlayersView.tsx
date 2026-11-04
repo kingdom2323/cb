@@ -24,6 +24,7 @@ import {
   Copy,
   Check,
   RotateCcw,
+  Zap,
 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -44,6 +45,8 @@ export const AllPlayersView: React.FC = () => {
     updatePlayerGroup,
     batchAssignGroup,
     isAdmin,
+    togglePlayerCounterTeam,
+    batchSetCounterTeam,
   } = useRoster();
 
   const { t } = useTranslation();
@@ -85,7 +88,8 @@ export const AllPlayersView: React.FC = () => {
     filters.alliance !== 'ALL' ||
     filters.rank !== 'ALL' ||
     filters.tcLevel !== 'ALL' ||
-    filters.battleGroup !== 'ALL';
+    filters.battleGroup !== 'ALL' ||
+    filters.counterTeam !== 'ALL';
 
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) {
@@ -102,7 +106,7 @@ export const AllPlayersView: React.FC = () => {
     <div className="space-y-3 font-sans">
       {/* Search & Filter Toolbar with Precise Heights and Spacing Alignment */}
       <div className="bg-slate-900 border border-slate-800 rounded-lg p-3.5 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 items-end">
           {/* Global Search Bar */}
           <div className="sm:col-span-2">
             <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
@@ -218,6 +222,25 @@ export const AllPlayersView: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Counter Team Filter */}
+          <div>
+            <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+              {t.counterTeamFilter}
+            </label>
+            <select
+              value={filters.counterTeam ?? 'ALL'}
+              onChange={(e) => {
+                setFilter('counterTeam', e.target.value as 'ALL' | 'YES' | 'NO');
+                setCurrentPage(1);
+              }}
+              className="w-full h-9 bg-slate-950 border border-slate-700 hover:border-slate-600 rounded-md px-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold cursor-pointer transition"
+            >
+              <option value="ALL">{t.allCounterTeam}</option>
+              <option value="YES">{t.ctOnly}</option>
+              <option value="NO">{t.nonCT}</option>
+            </select>
+          </div>
         </div>
 
         {/* Status line & active filter chips */}
@@ -303,6 +326,22 @@ export const AllPlayersView: React.FC = () => {
                 {group}
               </button>
             ))}
+            <div className="h-4 w-px bg-indigo-700/50" />
+            <button
+              type="button"
+              onClick={() => batchSetCounterTeam(Array.from(selectedPlayerIds), true)}
+              className="px-2.5 py-1 rounded text-xs font-bold bg-cyan-700 hover:bg-cyan-600 text-white transition flex items-center gap-1"
+            >
+              <Zap className="w-3 h-3" />
+              {t.markAsCounterTeam}
+            </button>
+            <button
+              type="button"
+              onClick={() => batchSetCounterTeam(Array.from(selectedPlayerIds), false)}
+              className="px-2.5 py-1 rounded text-xs font-bold bg-slate-700 hover:bg-slate-600 text-slate-200 transition"
+            >
+              {t.removeFromCTBulk}
+            </button>
           </div>
         </div>
       )}
@@ -379,12 +418,21 @@ export const AllPlayersView: React.FC = () => {
                     {renderSortIcon('battleGroup')}
                   </div>
                 </th>
+                <th
+                  onClick={() => handleSort('isCounterTeam')}
+                  className="py-2.5 px-3 cursor-pointer hover:text-white group w-16 text-center"
+                >
+                  <div className="flex items-center justify-center gap-1 font-bold">
+                    <span>{t.counterTeamShort}</span>
+                    {renderSortIcon('isCounterTeam')}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {paginatedPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} className="py-8 text-center text-slate-500">
+                  <td colSpan={isAdmin ? 10 : 9} className="py-8 text-center text-slate-500">
                     No players found matching current filters.
                   </td>
                 </tr>
@@ -513,6 +561,29 @@ export const AllPlayersView: React.FC = () => {
                           </span>
                         )}
                       </td>
+
+                      {/* Counter Team Toggle */}
+                      <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        {player.isCounterTeam && (
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider">
+                            CT
+                          </span>
+                        )}
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => togglePlayerCounterTeam(player.id)}
+                            title={player.isCounterTeam ? t.removeFromCounterTeam : t.addToCounterTeam}
+                            className={`ml-1 p-0.5 rounded transition ${
+                              player.isCounterTeam
+                                ? 'text-cyan-400 hover:text-cyan-200'
+                                : 'text-slate-600 hover:text-cyan-400'
+                            }`}
+                          >
+                            <Zap className="w-3 h-3" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })
@@ -623,6 +694,29 @@ export const AllPlayersView: React.FC = () => {
                     >
                       {player.battleGroup || t.unassigned}
                     </span>
+                  )}
+                </div>
+
+                {/* Counter Team badge and toggle for mobile */}
+                <div className="flex items-center gap-1 mt-1.5 pt-1 border-t border-slate-800/60" onClick={(e) => e.stopPropagation()}>
+                  {player.isCounterTeam && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 uppercase">
+                      CT
+                    </span>
+                  )}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => togglePlayerCounterTeam(player.id)}
+                      className={`text-[10px] font-bold flex items-center gap-1 px-2 py-0.5 rounded border transition ${
+                        player.isCounterTeam
+                          ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20'
+                          : 'border-slate-700 bg-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40'
+                      }`}
+                    >
+                      <Zap className="w-3 h-3" />
+                      {player.isCounterTeam ? t.removeFromCounterTeam : t.addToCounterTeam}
+                    </button>
                   )}
                 </div>
               </div>

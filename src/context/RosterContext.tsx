@@ -44,6 +44,8 @@ interface RosterContextType {
   clearSelection: () => void;
   updatePlayerGroup: (playerId: string, group: BattleGroup) => Promise<void>;
   batchAssignGroup: (playerIds: string[], group: BattleGroup) => Promise<void>;
+  togglePlayerCounterTeam: (playerId: string) => Promise<void>;
+  batchSetCounterTeam: (playerIds: string[], isCounterTeam: boolean) => Promise<void>;
   resetAllAllocations: () => Promise<void>;
   reloadInitialData: () => Promise<void>;
   clearAllData: () => void;
@@ -53,6 +55,7 @@ interface RosterContextType {
   filteredPlayers: Player[];
   groupStats: Record<BattleGroup, GroupStats>;
   allianceStats: Record<Alliance, AllianceStats>;
+  counterTeamStats: { count: number; totalPower: number };
   totalPower: number;
   isDbLoading: boolean;
   dbStatus: 'connected' | 'syncing' | 'error';
@@ -75,6 +78,7 @@ const defaultFilters: RosterFilters = {
   rank: 'ALL',
   tcLevel: 'ALL',
   battleGroup: 'ALL',
+  counterTeam: 'ALL',
 };
 
 const RosterContext = createContext<RosterContextType | undefined>(undefined);
@@ -331,6 +335,47 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     await rosterService.batchUpdateBattleGroup(playerIds, group);
   }, [isAdmin]);
 
+  // Toggle Counter Team dual categorization for a player
+  const togglePlayerCounterTeam = useCallback(async (playerId: string) => {
+    if (!isAdmin) return; // Guard: Only admin can toggle counter team
+    let nextStatus = false;
+
+    // Optimistic UI update
+    setPlayers((prev) => {
+      const updated = prev.map((p) => {
+        if (p.id === playerId) {
+          nextStatus = !p.isCounterTeam;
+          return { ...p, isCounterTeam: nextStatus, updatedAt: new Date().toISOString() };
+        }
+        return p;
+      });
+      rosterService.cachePlayers(updated);
+      return updated;
+    });
+
+    // Execute real-time Supabase update
+    await rosterService.updatePlayerCounterTeam(playerId, nextStatus);
+  }, [isAdmin]);
+
+  // Batch assign/remove Counter Team status for multiple selected players
+  const batchSetCounterTeam = useCallback(async (playerIds: string[], isCounterTeam: boolean) => {
+    if (!isAdmin || !Array.isArray(playerIds) || playerIds.length === 0) return;
+    const idSet = new Set(playerIds);
+
+    // Optimistic UI update
+    setPlayers((prev) => {
+      const updated = prev.map((p) =>
+        idSet.has(p.id) ? { ...p, isCounterTeam, updatedAt: new Date().toISOString() } : p
+      );
+      rosterService.cachePlayers(updated);
+      return updated;
+    });
+    setSelectedPlayerIds(new Set());
+
+    // Execute real-time Supabase batch update
+    await rosterService.batchUpdateCounterTeam(playerIds, isCounterTeam);
+  }, [isAdmin]);
+
   // Reset all allocations back to unassigned in React state and in Supabase
   const resetAllAllocations = useCallback(async () => {
     if (!isAdmin) return; // Guard: Only admin can reset allocations
@@ -456,6 +501,13 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (filters.battleGroup !== 'ALL' && player.battleGroup !== filters.battleGroup) {
         return false;
       }
+      // Counter team filter
+      if (filters.counterTeam === 'YES' && !player.isCounterTeam) {
+        return false;
+      }
+      if (filters.counterTeam === 'NO' && player.isCounterTeam) {
+        return false;
+      }
       // Search filter (Name or ID)
       if (query) {
         const nameMatch = player.name.toLowerCase().includes(query);
@@ -488,6 +540,9 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           break;
         case 'battleGroup':
           comparison = a.battleGroup.localeCompare(b.battleGroup);
+          break;
+        case 'isCounterTeam':
+          comparison = (a.isCounterTeam ? 1 : 0) - (b.isCounterTeam ? 1 : 0);
           break;
         default:
           comparison = a.currentPower - b.currentPower;
@@ -561,9 +616,22 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (stats[g].allianceBreakdown[p.alliance] !== undefined) {
         stats[g].allianceBreakdown[p.alliance] += 1;
       }
+      if (p.isCounterTeam) {
+        stats[g].counterTeamCount = (stats[g].counterTeamCount || 0) + 1;
+        stats[g].counterTeamPower = (stats[g].counterTeamPower || 0) + p.currentPower;
+      }
     }
 
     return stats;
+  }, [players]);
+
+  // Global Counter Team Stats
+  const counterTeamStats = useMemo(() => {
+    const counterMembers = players.filter((p) => p.isCounterTeam);
+    return {
+      count: counterMembers.length,
+      totalPower: counterMembers.reduce((sum, p) => sum + p.currentPower, 0),
+    };
   }, [players]);
 
   // Alliance stats
@@ -605,6 +673,8 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         clearSelection,
         updatePlayerGroup,
         batchAssignGroup,
+        togglePlayerCounterTeam,
+        batchSetCounterTeam,
         resetAllAllocations,
         reloadInitialData,
         clearAllData,
@@ -614,6 +684,7 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         filteredPlayers,
         groupStats,
         allianceStats,
+        counterTeamStats,
         totalPower,
         isDbLoading,
         dbStatus,

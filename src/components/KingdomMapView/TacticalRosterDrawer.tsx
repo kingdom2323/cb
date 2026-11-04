@@ -189,6 +189,15 @@ export const TacticalRosterDrawer: React.FC<TacticalRosterDrawerProps> = ({
                   </span>
                 </div>
 
+                {/* Counter Team badge */}
+                {p.isCounterTeam && (
+                  <div className="flex items-center gap-1">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider">
+                      COUNTER TEAM
+                    </span>
+                  </div>
+                )}
+
                 {/* Admin Quick Group Reassign */}
                 {isAdmin && (
                   <div

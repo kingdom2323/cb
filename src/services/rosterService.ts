@@ -4,6 +4,26 @@ import { INITIAL_PLAYERS } from '../data/initialData';
 import { formatTcLevel } from '../utils/formatters';
 
 const STORAGE_KEY = 'kvk_roster_players_v3';
+const COUNTER_TEAM_STORAGE_KEY = 'kvk_counter_team_player_ids';
+
+let supabaseHasCounterTeamColumn: boolean | null = null;
+
+export function getLocalCounterTeamSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(COUNTER_TEAM_STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr.map(String));
+    }
+  } catch {}
+  return new Set();
+}
+
+export function saveLocalCounterTeamSet(set: Set<string>): void {
+  try {
+    localStorage.setItem(COUNTER_TEAM_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
 
 /**
  * Robust power value parser: handles raw numbers, strings with commas,
@@ -42,6 +62,7 @@ export function normalizeBattleGroup(group: string | null | undefined): BattleGr
 }
 
 export function mapRowToPlayer(row: any): Player {
+  const localCounterSet = getLocalCounterTeamSet();
   if (!row || typeof row !== 'object') {
     return {
       id: String(Math.random()),
@@ -51,6 +72,7 @@ export function mapRowToPlayer(row: any): Player {
       currentPower: 0,
       tgLevel: 'TC1',
       battleGroup: 'Unassigned',
+      isCounterTeam: false,
     };
   }
 
@@ -60,21 +82,32 @@ export function mapRowToPlayer(row: any): Player {
     : 'ERA';
 
   const cleanName = String(row.name || 'Unknown').replace(/\u00a0/g, ' ').trim();
+  const rowId = String(row.id || `p-${Math.random().toString(36).substring(2, 9)}`);
+
+  const isCounter = row.is_counter_team !== undefined && row.is_counter_team !== null
+    ? Boolean(row.is_counter_team)
+    : Boolean(row.isCounterTeam || row.counter_team || localCounterSet.has(rowId));
 
   return {
-    id: String(row.id || `p-${Math.random().toString(36).substring(2, 9)}`),
+    id: rowId,
     name: cleanName,
     alliance,
     rank: String(row.rank || 'R1').replace(/\u00a0/g, ' ').trim(),
-    currentPower: parsePowerValue(row.current_power),
-    tgLevel: formatTcLevel(row.tg_level || ''),
-    battleGroup: normalizeBattleGroup(row.battle_group),
+    currentPower: parsePowerValue(row.current_power ?? row.currentPower),
+    tgLevel: formatTcLevel(row.tg_level || row.tgLevel || ''),
+    battleGroup: normalizeBattleGroup(row.battle_group ?? row.battleGroup),
+    isCounterTeam: isCounter,
   };
 }
 
-export function mapPlayerToRow(p: Player, preserveGroup?: string | null): SupabasePlayerRow {
+export function mapPlayerToRow(
+  p: Player,
+  preserveGroup?: string | null,
+  preserveCounter?: boolean | null
+): SupabasePlayerRow {
   const bg = preserveGroup !== undefined ? preserveGroup : p.battleGroup;
-  return {
+  const isCounter = preserveCounter !== undefined && preserveCounter !== null ? preserveCounter : Boolean(p.isCounterTeam);
+  const row: SupabasePlayerRow = {
     id: String(p.id),
     name: String(p.name || 'Unknown').replace(/\u00a0/g, ' ').trim(),
     alliance: p.alliance || 'ERA',
@@ -83,6 +116,10 @@ export function mapPlayerToRow(p: Player, preserveGroup?: string | null): Supaba
     tg_level: formatTcLevel(p.tgLevel || ''),
     battle_group: !bg || bg === 'Unassigned' ? null : bg,
   };
+  if (supabaseHasCounterTeamColumn !== false) {
+    row.is_counter_team = isCounter;
+  }
+  return row;
 }
 
 export const rosterService = {
@@ -180,6 +217,88 @@ export const rosterService = {
   },
 
   /**
+   * Update is_counter_team in Supabase in real-time
+   */
+  async updatePlayerCounterTeam(playerId: string, isCounterTeam: boolean): Promise<boolean> {
+    const localSet = getLocalCounterTeamSet();
+    if (isCounterTeam) {
+      localSet.add(String(playerId));
+    } else {
+      localSet.delete(String(playerId));
+    }
+    saveLocalCounterTeamSet(localSet);
+
+    if (supabaseHasCounterTeamColumn === false) {
+      return true;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ is_counter_team: isCounterTeam })
+        .eq('id', playerId);
+
+      if (error) {
+        if (error.code === 'PGRST204' || error.message?.includes('is_counter_team')) {
+          console.warn('Supabase is_counter_team column not found. Local cache active.');
+          supabaseHasCounterTeamColumn = false;
+          return true;
+        }
+        console.error('Failed to update counter team status on Supabase:', error);
+        return false;
+      }
+      supabaseHasCounterTeamColumn = true;
+      return true;
+    } catch (err) {
+      console.error('Supabase update counter team request failed:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Batch update multiple players' is_counter_team in Supabase in real-time
+   */
+  async batchUpdateCounterTeam(playerIds: string[], isCounterTeam: boolean): Promise<boolean> {
+    if (!Array.isArray(playerIds) || playerIds.length === 0) return true;
+
+    const localSet = getLocalCounterTeamSet();
+    for (const id of playerIds) {
+      if (isCounterTeam) {
+        localSet.add(String(id));
+      } else {
+        localSet.delete(String(id));
+      }
+    }
+    saveLocalCounterTeamSet(localSet);
+
+    if (supabaseHasCounterTeamColumn === false) {
+      return true;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ is_counter_team: isCounterTeam })
+        .in('id', playerIds);
+
+      if (error) {
+        if (error.code === 'PGRST204' || error.message?.includes('is_counter_team')) {
+          console.warn('Supabase is_counter_team column not found. Local cache active.');
+          supabaseHasCounterTeamColumn = false;
+          return true;
+        }
+        console.error('Failed to batch update counter team status on Supabase:', error);
+        return false;
+      }
+      supabaseHasCounterTeamColumn = true;
+      return true;
+    } catch (err) {
+      console.error('Supabase batch update counter team request failed:', err);
+      return false;
+    }
+  },
+
+  /**
    * Dedicated synchronization for live MightPulse data:
    * 1. Preserves existing Supabase battle group allocations
    * 2. Upserts all incoming live players to Supabase
@@ -196,17 +315,32 @@ export const rosterService = {
     }
 
     const existingGroupMap = new Map<string, string | null>();
+    const existingCounterMap = new Map<string, boolean>();
 
     if (preserveExistingGroups) {
       try {
-        const { data: existingRows } = await supabase
+        const { data: existingRows, error: fetchErr } = await supabase
           .from('players')
-          .select('id, battle_group');
+          .select('id, battle_group, is_counter_team');
 
         if (Array.isArray(existingRows)) {
+          supabaseHasCounterTeamColumn = true;
           for (const row of existingRows) {
-            if (row && row.battle_group) {
-              existingGroupMap.set(String(row.id), row.battle_group);
+            if (row) {
+              if (row.battle_group) existingGroupMap.set(String(row.id), row.battle_group);
+              if (row.is_counter_team !== undefined && row.is_counter_team !== null) {
+                existingCounterMap.set(String(row.id), Boolean(row.is_counter_team));
+              }
+            }
+          }
+        } else if (fetchErr) {
+          supabaseHasCounterTeamColumn = false;
+          const { data: fallbackRows } = await supabase
+            .from('players')
+            .select('id, battle_group');
+          if (Array.isArray(fallbackRows)) {
+            for (const row of fallbackRows) {
+              if (row && row.battle_group) existingGroupMap.set(String(row.id), row.battle_group);
             }
           }
         }
@@ -215,22 +349,29 @@ export const rosterService = {
       }
     }
 
-    // Merge preserved battle groups directly into incoming player objects
+    // Merge preserved battle groups and counter team status directly into incoming player objects
+    const localCounterSet = getLocalCounterTeamSet();
     const syncedPlayers: Player[] = incomingPlayers.map((p) => {
       const preservedGroup = existingGroupMap.get(p.id);
       const groupToUse = preservedGroup !== undefined && preservedGroup !== null
         ? normalizeBattleGroup(preservedGroup)
         : p.battleGroup;
+      const preservedCounter = existingCounterMap.has(p.id)
+        ? Boolean(existingCounterMap.get(p.id))
+        : localCounterSet.has(p.id) || Boolean(p.isCounterTeam);
       return {
         ...p,
         battleGroup: groupToUse,
+        isCounterTeam: preservedCounter,
       };
     });
 
     // Format incoming into database rows
-    const rows: SupabasePlayerRow[] = syncedPlayers.map((p) => mapPlayerToRow(p, p.battleGroup));
+    const rows: SupabasePlayerRow[] = syncedPlayers.map((p) =>
+      mapPlayerToRow(p, p.battleGroup, p.isCounterTeam)
+    );
 
-    // Upsert in batches of 100
+    // Upsert in batches of 100 with fallback if column is not yet present in Supabase
     const chunkSize = 100;
     for (let i = 0; i < rows.length; i += chunkSize) {
       const chunk = rows.slice(i, i + chunkSize);
@@ -239,7 +380,18 @@ export const rosterService = {
         .upsert(chunk, { onConflict: 'id' });
 
       if (error) {
-        throw error;
+        if (error.code === 'PGRST204' || error.message?.includes('is_counter_team')) {
+          supabaseHasCounterTeamColumn = false;
+          const fallbackChunk = chunk.map(({ is_counter_team, ...rest }) => rest);
+          const { error: fallbackError } = await supabase
+            .from('players')
+            .upsert(fallbackChunk, { onConflict: 'id' });
+          if (fallbackError) throw fallbackError;
+        } else {
+          throw error;
+        }
+      } else {
+        supabaseHasCounterTeamColumn = true;
       }
     }
 
@@ -288,17 +440,32 @@ export const rosterService = {
       }
 
       let existingGroupMap = new Map<string, string | null>();
+      let existingCounterMap = new Map<string, boolean>();
 
       if (preserveExistingGroups) {
         try {
-          const { data: existingRows } = await supabase
+          const { data: existingRows, error: fetchErr } = await supabase
             .from('players')
-            .select('id, battle_group');
+            .select('id, battle_group, is_counter_team');
 
           if (Array.isArray(existingRows)) {
+            supabaseHasCounterTeamColumn = true;
             for (const row of existingRows) {
-              if (row && row.battle_group) {
-                existingGroupMap.set(String(row.id), row.battle_group);
+              if (row) {
+                if (row.battle_group) existingGroupMap.set(String(row.id), row.battle_group);
+                if (row.is_counter_team !== undefined && row.is_counter_team !== null) {
+                  existingCounterMap.set(String(row.id), Boolean(row.is_counter_team));
+                }
+              }
+            }
+          } else if (fetchErr) {
+            supabaseHasCounterTeamColumn = false;
+            const { data: fallbackRows } = await supabase
+              .from('players')
+              .select('id, battle_group');
+            if (Array.isArray(fallbackRows)) {
+              for (const row of fallbackRows) {
+                if (row && row.battle_group) existingGroupMap.set(String(row.id), row.battle_group);
               }
             }
           }
@@ -308,20 +475,27 @@ export const rosterService = {
       }
 
       // Format incoming into database rows
+      const localCounterSet = getLocalCounterTeamSet();
       const syncedPlayers: Player[] = incomingPlayers.map((p) => {
         const preservedGroup = existingGroupMap.get(p.id);
         const groupToUse = preservedGroup !== undefined && preservedGroup !== null
           ? normalizeBattleGroup(preservedGroup)
           : p.battleGroup;
+        const preservedCounter = existingCounterMap.has(p.id)
+          ? Boolean(existingCounterMap.get(p.id))
+          : localCounterSet.has(p.id) || Boolean(p.isCounterTeam);
         return {
           ...p,
           battleGroup: groupToUse,
+          isCounterTeam: preservedCounter,
         };
       });
 
-      const rows: SupabasePlayerRow[] = syncedPlayers.map((p) => mapPlayerToRow(p, p.battleGroup));
+      const rows: SupabasePlayerRow[] = syncedPlayers.map((p) =>
+        mapPlayerToRow(p, p.battleGroup, p.isCounterTeam)
+      );
 
-      // Upsert in batches of 100
+      // Upsert in batches of 100 with fallback
       const chunkSize = 100;
       for (let i = 0; i < rows.length; i += chunkSize) {
         const chunk = rows.slice(i, i + chunkSize);
@@ -330,7 +504,18 @@ export const rosterService = {
           .upsert(chunk, { onConflict: 'id' });
 
         if (error) {
-          throw error;
+          if (error.code === 'PGRST204' || error.message?.includes('is_counter_team')) {
+            supabaseHasCounterTeamColumn = false;
+            const fallbackChunk = chunk.map(({ is_counter_team, ...rest }) => rest);
+            const { error: fallbackError } = await supabase
+              .from('players')
+              .upsert(fallbackChunk, { onConflict: 'id' });
+            if (fallbackError) throw fallbackError;
+          } else {
+            throw error;
+          }
+        } else {
+          supabaseHasCounterTeamColumn = true;
         }
       }
 

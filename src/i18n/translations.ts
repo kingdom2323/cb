@@ -97,6 +97,17 @@ export interface Translations {
   noPlayersFound: string;
   close: string;
   centerCamera: string;
+  counterTeam: string;
+  counterTeamShort: string;
+  toggleCounterTeam: string;
+  addToCounterTeam: string;
+  removeFromCounterTeam: string;
+  counterTeamFilter: string;
+  allCounterTeam: string;
+  ctOnly: string;
+  nonCT: string;
+  markAsCounterTeam: string;
+  removeFromCTBulk: string;
 }
 
 export const TRANSLATIONS: Record<Language, Translations> = {
@@ -185,6 +196,17 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     noPlayersFound: 'No matching players found.',
     close: 'Close',
     centerCamera: 'Center Camera',
+    counterTeam: 'Counter Team',
+    counterTeamShort: 'CT',
+    toggleCounterTeam: 'Toggle Counter Team',
+    addToCounterTeam: 'Add to Counter Team',
+    removeFromCounterTeam: 'Remove from Counter Team',
+    counterTeamFilter: 'Counter Team',
+    allCounterTeam: 'All',
+    ctOnly: 'CT Only',
+    nonCT: 'Non-CT',
+    markAsCounterTeam: 'Mark as Counter Team',
+    removeFromCTBulk: 'Remove CT Status',
   },
   FR: {
     headerTitle: 'ROSTER KVK',
@@ -271,6 +293,17 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     noPlayersFound: 'Aucun joueur trouve.',
     close: 'Fermer',
     centerCamera: 'Centrer Camera',
+    counterTeam: 'Equipe Contre',
+    counterTeamShort: 'CT',
+    toggleCounterTeam: 'Basculer Equipe Contre',
+    addToCounterTeam: 'Ajouter Equipe Contre',
+    removeFromCounterTeam: 'Retirer Equipe Contre',
+    counterTeamFilter: 'Equipe Contre',
+    allCounterTeam: 'Tous',
+    ctOnly: 'CT Seulement',
+    nonCT: 'Non-CT',
+    markAsCounterTeam: 'Marquer Equipe Contre',
+    removeFromCTBulk: 'Retirer Statut CT',
   },
   ES: {
     headerTitle: 'ROSTER KVK',
@@ -357,6 +390,17 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     noPlayersFound: 'No se encontraron jugadores.',
     close: 'Cerrar',
     centerCamera: 'Centrar Camara',
+    counterTeam: 'Equipo Contra',
+    counterTeamShort: 'CT',
+    toggleCounterTeam: 'Alternar Equipo Contra',
+    addToCounterTeam: 'Agregar al Equipo Contra',
+    removeFromCounterTeam: 'Quitar del Equipo Contra',
+    counterTeamFilter: 'Equipo Contra',
+    allCounterTeam: 'Todos',
+    ctOnly: 'Solo CT',
+    nonCT: 'No-CT',
+    markAsCounterTeam: 'Marcar Equipo Contra',
+    removeFromCTBulk: 'Quitar Estado CT',
   },
   PT: {
     headerTitle: 'ROSTER KVK',
@@ -443,5 +487,16 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     noPlayersFound: 'Nenhum jogador encontrado.',
     close: 'Fechar',
     centerCamera: 'Centralizar Camera',
+    counterTeam: 'Equipe Contra',
+    counterTeamShort: 'CT',
+    toggleCounterTeam: 'Alternar Equipe Contra',
+    addToCounterTeam: 'Adicionar Equipe Contra',
+    removeFromCounterTeam: 'Remover Equipe Contra',
+    counterTeamFilter: 'Equipe Contra',
+    allCounterTeam: 'Todos',
+    ctOnly: 'Somente CT',
+    nonCT: 'Nao-CT',
+    markAsCounterTeam: 'Marcar Equipe Contra',
+    removeFromCTBulk: 'Remover Status CT',
   },
 };

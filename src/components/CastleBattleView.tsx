@@ -23,11 +23,12 @@ import {
   Check,
   UserPlus,
   X,
+  Zap,
 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 
 export const CastleBattleView: React.FC = () => {
-  const { players, groupStats, updatePlayerGroup, batchAssignGroup, isAdmin } = useRoster();
+  const { players, groupStats, updatePlayerGroup, batchAssignGroup, isAdmin, togglePlayerCounterTeam } = useRoster();
   const { t } = useTranslation();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -319,6 +320,17 @@ export const CastleBattleView: React.FC = () => {
                   </div>
                 </div>
 
+                {(stats?.counterTeamCount || 0) > 0 && (
+                  <div className="col-span-2 bg-cyan-950/40 rounded p-1.5 border border-cyan-500/30">
+                    <span className="text-[10px] uppercase font-bold text-cyan-400 block">
+                      Counter Team
+                    </span>
+                    <span className="text-sm font-bold text-cyan-300">
+                      {stats?.counterTeamCount || 0} CT
+                    </span>
+                  </div>
+                )}
+
                 {/* Alliance breakdown mini-bars */}
                 <div className="space-y-1 pt-0.5">
                   <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold">
@@ -405,6 +417,30 @@ export const CastleBattleView: React.FC = () => {
                           <span className={`px-1.5 py-0.2 rounded text-[10px] shrink-0 ${tcBadgeStyle}`}>
                             {formattedLevel}
                           </span>
+                        </div>
+
+                        {/* Counter Team Badge and Admin Toggle */}
+                        <div className="flex items-center gap-1.5 pt-1 border-t border-slate-800/60">
+                          {player.isCounterTeam && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider animate-pulse-slow">
+                              CT
+                            </span>
+                          )}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => togglePlayerCounterTeam(player.id)}
+                              title={player.isCounterTeam ? 'Remove from Counter Team' : 'Add to Counter Team'}
+                              className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border transition ${
+                                player.isCounterTeam
+                                  ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20'
+                                  : 'border-slate-700/60 bg-slate-900/40 text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40'
+                              }`}
+                            >
+                              <Zap className="w-2.5 h-2.5" />
+                              <span>{player.isCounterTeam ? 'CT' : 'Set CT'}</span>
+                            </button>
+                          )}
                         </div>
 
                         {/* Interactive Group Reassignment (Admin Only) */}

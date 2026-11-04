@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 
 export const KingdomMapView: React.FC = () => {
-  const { players, isAdmin, updatePlayerGroup, setActiveTab } = useRoster();
+  const { players, isAdmin, updatePlayerGroup, setActiveTab, togglePlayerCounterTeam } = useRoster();
   const { t } = useTranslation();
 
   // Map state
@@ -364,6 +364,7 @@ export const KingdomMapView: React.FC = () => {
         isAdmin={isAdmin}
         onUpdateGroup={updatePlayerGroup}
         onCenterOnPlayer={handleCenterOnPlayer}
+        onToggleCounterTeam={togglePlayerCounterTeam}
       />
     </div>
   );
