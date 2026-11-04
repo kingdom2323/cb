@@ -18,7 +18,6 @@ import {
   UserMinus,
   Users,
   Search,
-  RotateCcw,
   Copy,
   Check,
   UserPlus,
@@ -101,28 +100,15 @@ export const CastleBattleView: React.FC = () => {
 
   const handleCopyGroupList = (group: BattleGroup) => {
     const list = playersByGroup[group];
-    const totalGroupPower = list.reduce((sum, p) => sum + p.currentPower, 0);
 
     const lines = [
-      `=== ${group.toUpperCase()} (${list.length} Players | ${formatPower(totalGroupPower)}) ===`,
-      ...list.map(
-        (p, idx) =>
-          `${idx + 1}. [${p.alliance}] ${p.name} (${p.rank}) | Power: ${formatPower(p.currentPower)} | ${formatTcLevel(p.tgLevel)}`
-      ),
+      `--- ${group} ---`,
+      ...list.map((p) => `[${p.alliance}] ${p.name}`),
     ];
 
     navigator.clipboard.writeText(lines.join('\n'));
     setCopiedGroup(group);
     setTimeout(() => setCopiedGroup(null), 2000);
-  };
-
-  const handleClearGroup = (group: BattleGroup) => {
-    if (!isAdmin) return;
-    const ids = playersByGroup[group].map((p) => p.id);
-    if (ids.length === 0) return;
-    if (window.confirm(t.confirmClearGroup.replace('{count}', String(ids.length)).replace('{group}', group))) {
-      batchAssignGroup(ids, 'Unassigned');
-    }
   };
 
   const groupIcons: Record<BattleGroup, React.ReactNode> = {
@@ -281,18 +267,6 @@ export const CastleBattleView: React.FC = () => {
                         <Copy className="w-3.5 h-3.5" />
                       )}
                     </button>
-
-                    {/* Reset bucket button (Admin Only) */}
-                    {isAdmin && groupList.length > 0 && (
-                      <button
-                        type="button"
-                        disabled
-                        className="p-1 rounded bg-slate-950/40 text-slate-600 border border-slate-800/60 opacity-50 cursor-not-allowed transition"
-                        title="Remove all members back to unallocated reserve (Disabled)"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                   </div>
                 </div>
 

@@ -115,10 +115,8 @@ export function mapPlayerToRow(
     current_power: parsePowerValue(p.currentPower),
     tg_level: formatTcLevel(p.tgLevel || ''),
     battle_group: !bg || bg === 'Unassigned' ? null : bg,
+    is_counter_team: isCounter,
   };
-  if (supabaseHasCounterTeamColumn !== false) {
-    row.is_counter_team = isCounter;
-  }
   return row;
 }
 
@@ -140,6 +138,14 @@ export const rosterService = {
 
       if (Array.isArray(data) && data.length > 0) {
         const players = data.map(mapRowToPlayer);
+        // Sync local storage counter set with Supabase values
+        const counterSet = new Set<string>();
+        for (const p of players) {
+          if (p.isCounterTeam) {
+            counterSet.add(p.id);
+          }
+        }
+        saveLocalCounterTeamSet(counterSet);
         this.cachePlayers(players);
         return players;
       }
@@ -228,10 +234,6 @@ export const rosterService = {
     }
     saveLocalCounterTeamSet(localSet);
 
-    if (supabaseHasCounterTeamColumn === false) {
-      return true;
-    }
-
     try {
       const { error } = await supabase
         .from('players')
@@ -239,15 +241,9 @@ export const rosterService = {
         .eq('id', playerId);
 
       if (error) {
-        if (error.code === 'PGRST204' || error.message?.includes('is_counter_team')) {
-          console.warn('Supabase is_counter_team column not found. Local cache active.');
-          supabaseHasCounterTeamColumn = false;
-          return true;
-        }
         console.error('Failed to update counter team status on Supabase:', error);
         return false;
       }
-      supabaseHasCounterTeamColumn = true;
       return true;
     } catch (err) {
       console.error('Supabase update counter team request failed:', err);
@@ -271,10 +267,6 @@ export const rosterService = {
     }
     saveLocalCounterTeamSet(localSet);
 
-    if (supabaseHasCounterTeamColumn === false) {
-      return true;
-    }
-
     try {
       const { error } = await supabase
         .from('players')
@@ -282,15 +274,9 @@ export const rosterService = {
         .in('id', playerIds);
 
       if (error) {
-        if (error.code === 'PGRST204' || error.message?.includes('is_counter_team')) {
-          console.warn('Supabase is_counter_team column not found. Local cache active.');
-          supabaseHasCounterTeamColumn = false;
-          return true;
-        }
         console.error('Failed to batch update counter team status on Supabase:', error);
         return false;
       }
-      supabaseHasCounterTeamColumn = true;
       return true;
     } catch (err) {
       console.error('Supabase batch update counter team request failed:', err);
@@ -421,6 +407,13 @@ export const rosterService = {
     // Sort players by power descending
     syncedPlayers.sort((a, b) => b.currentPower - a.currentPower);
 
+    // Sync local storage counter set
+    const updatedCounterSet = new Set<string>();
+    for (const p of syncedPlayers) {
+      if (p.isCounterTeam) updatedCounterSet.add(p.id);
+    }
+    saveLocalCounterTeamSet(updatedCounterSet);
+
     // Cache ONLY the live MightPulse synced players
     this.cachePlayers(syncedPlayers);
 
@@ -520,6 +513,14 @@ export const rosterService = {
       }
 
       syncedPlayers.sort((a, b) => b.currentPower - a.currentPower);
+
+      // Sync local storage counter set
+      const updatedCounterSet = new Set<string>();
+      for (const p of syncedPlayers) {
+        if (p.isCounterTeam) updatedCounterSet.add(p.id);
+      }
+      saveLocalCounterTeamSet(updatedCounterSet);
+
       this.cachePlayers(syncedPlayers);
 
       return syncedPlayers;

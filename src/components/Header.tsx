@@ -6,9 +6,7 @@ import { Language } from '../i18n/translations';
 import {
   Users,
   Castle,
-  Upload,
   Download,
-  RotateCcw,
   FileSpreadsheet,
   FileJson,
   Check,
@@ -17,7 +15,6 @@ import {
   LogOut,
   ShieldCheck,
   Eye,
-  Map,
   RefreshCw,
   Globe,
   Menu,
@@ -35,9 +32,7 @@ export const Header: React.FC = () => {
   const {
     activeTab,
     setActiveTab,
-    setIsImportModalOpen,
     players,
-    resetAllAllocations,
     isAdmin,
     logoutAdmin,
     setIsLoginModalOpen,
@@ -200,35 +195,6 @@ export const Header: React.FC = () => {
 
               <button
                 type="button"
-                disabled
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs font-bold transition border bg-slate-800/50 text-slate-500 border-slate-700/50 opacity-50 cursor-not-allowed"
-                title={`${t.tacticalMap} (Disabled)`}
-              >
-                <Map className="w-3.5 h-3.5 text-slate-500" />
-                <span className="hidden xl:inline">{activeTab === 'kingdom-map' ? t.exitMap : t.tacticalMap}</span>
-              </button>
-
-              <button
-                type="button"
-                disabled
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-slate-800/50 text-slate-500 border border-slate-700/50 text-xs font-bold transition opacity-50 cursor-not-allowed"
-                title={`${t.importCsvs} (Disabled)`}
-              >
-                <Upload className="w-3.5 h-3.5 text-slate-500" />
-                <span className="hidden lg:inline">{t.importCsvs}</span>
-              </button>
-
-              <button
-                type="button"
-                disabled
-                className="p-1.5 rounded bg-slate-800/50 text-slate-600 border border-slate-700/50 transition opacity-50 cursor-not-allowed"
-                title={`${t.resetAllocations} (Disabled)`}
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
                 onClick={logoutAdmin}
                 className="flex items-center gap-1 px-2 py-1.5 rounded bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 border border-slate-700 text-xs font-bold transition"
                 title={t.logout}
@@ -382,7 +348,7 @@ export const Header: React.FC = () => {
               </div>
 
               {/* Action row 1 */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={isSyncingMightPulse}
@@ -392,30 +358,10 @@ export const Header: React.FC = () => {
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncingMightPulse ? 'animate-spin' : ''}`} />
                   <span>{isSyncingMightPulse ? t.syncing : t.refreshMightPulse}</span>
                 </button>
-
-                <button
-                  type="button"
-                  disabled
-                  className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-bold transition border flex-1 justify-center bg-slate-800/50 text-slate-500 border-slate-700/50 opacity-50 cursor-not-allowed"
-                  title={`${t.tacticalMap} (Disabled)`}
-                >
-                  <Map className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{activeTab === 'kingdom-map' ? t.exitMap : t.tacticalMap}</span>
-                </button>
               </div>
 
               {/* Action row 2 */}
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled
-                  className="flex items-center gap-1.5 px-3 py-2 rounded bg-slate-800/50 text-slate-500 border border-slate-700/50 text-xs font-bold transition flex-1 justify-center opacity-50 cursor-not-allowed"
-                  title={`${t.importCsvs} (Disabled)`}
-                >
-                  <Upload className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{t.importCsvs}</span>
-                </button>
-
                 <button
                   type="button"
                   onClick={handleExportCsv}
@@ -427,17 +373,8 @@ export const Header: React.FC = () => {
 
                 <button
                   type="button"
-                  disabled
-                  className="p-2 rounded bg-slate-800/50 text-slate-600 border border-slate-700/50 transition opacity-50 cursor-not-allowed"
-                  title={`${t.resetAllocations} (Disabled)`}
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => { logoutAdmin(); setShowMobileMenu(false); }}
-                  className="flex items-center gap-1 px-3 py-2 rounded bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 border border-slate-700 text-xs font-bold transition"
+                  className="flex items-center gap-1 px-3 py-2 rounded bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 border border-slate-700 text-xs font-bold transition flex-1 justify-center"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>{t.logout}</span>
