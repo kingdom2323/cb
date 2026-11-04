@@ -12,6 +12,7 @@ import {
   DESTINATION_CONFIG,
 } from '../types/migration';
 import { teaMigrationService } from '../services/teaMigrationService';
+import { sendMigrationListToDiscord } from '../services/discordService';
 import {
   formatPower,
   formatFullNumber,
@@ -34,6 +35,8 @@ import {
   Upload,
   RefreshCw,
   Zap,
+  Send,
+  AlertCircle,
 } from 'lucide-react';
 
 export const TeaMigrationView: React.FC = () => {
@@ -51,6 +54,8 @@ export const TeaMigrationView: React.FC = () => {
   const [cbFilter, setCbFilter] = useState<CbParticipationStatus | 'ALL'>('ALL');
   const [tierFilter, setTierFilter] = useState<TroopTier | 'ALL'>('ALL');
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
+  // Discord send state: null = idle, 'sending-VIK' | 'sending-ONX' = in-flight, 'ok-VIK' | 'ok-ONX' = success, 'err-VIK:msg' | 'err-ONX:msg' = error
+  const [discordState, setDiscordState] = useState<string | null>(null);
 
   // Multi-selection for bulk actions (Admin only)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -227,6 +232,22 @@ export const TeaMigrationView: React.FC = () => {
     setCopiedNotification(label);
     setTimeout(() => setCopiedNotification(null), 2500);
   };
+
+  // Discord send helpers
+  const handleSendToDiscord = useCallback(
+    async (dest: 'VIK' | 'ONX') => {
+      setDiscordState(`sending-${dest}`);
+      const result = await sendMigrationListToDiscord(teaPlayers, dest);
+      if (result.ok) {
+        setDiscordState(`ok-${dest}`);
+        setTimeout(() => setDiscordState(null), 3000);
+      } else {
+        setDiscordState(`err-${dest}:${result.error ?? 'Unknown error'}`);
+        setTimeout(() => setDiscordState(null), 5000);
+      }
+    },
+    [teaPlayers]
+  );
 
   // Filtered & Sorted list
   const filteredPlayers = useMemo(() => {
@@ -478,6 +499,82 @@ export const TeaMigrationView: React.FC = () => {
               )}
               <span>Copy ONX List ({onxCount})</span>
             </button>
+
+            {/* Discord send buttons */}
+            <div className="w-px h-5 bg-slate-700 mx-0.5 self-center hidden sm:block" />
+
+            <button
+              type="button"
+              disabled={discordState === 'sending-VIK'}
+              onClick={() => handleSendToDiscord('VIK')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs font-bold transition shadow-sm disabled:opacity-60 ${
+                discordState?.startsWith('ok-VIK')
+                  ? 'bg-emerald-900/60 border-emerald-500/40 text-emerald-200'
+                  : discordState?.startsWith('err-VIK')
+                  ? 'bg-rose-900/60 border-rose-500/40 text-rose-200'
+                  : 'bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 border-indigo-500/40'
+              }`}
+              title="Post VIK migration list to Discord"
+            >
+              {discordState === 'sending-VIK' ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : discordState?.startsWith('ok-VIK') ? (
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+              ) : discordState?.startsWith('err-VIK') ? (
+                <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              <span>
+                {discordState === 'sending-VIK'
+                  ? 'Sending...'
+                  : discordState?.startsWith('ok-VIK')
+                  ? 'Sent!'
+                  : discordState?.startsWith('err-VIK')
+                  ? 'Failed'
+                  : `VIK → Discord`}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              disabled={discordState === 'sending-ONX'}
+              onClick={() => handleSendToDiscord('ONX')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs font-bold transition shadow-sm disabled:opacity-60 ${
+                discordState?.startsWith('ok-ONX')
+                  ? 'bg-emerald-900/60 border-emerald-500/40 text-emerald-200'
+                  : discordState?.startsWith('err-ONX')
+                  ? 'bg-rose-900/60 border-rose-500/40 text-rose-200'
+                  : 'bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 border-indigo-500/40'
+              }`}
+              title="Post ONX migration list to Discord"
+            >
+              {discordState === 'sending-ONX' ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : discordState?.startsWith('ok-ONX') ? (
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+              ) : discordState?.startsWith('err-ONX') ? (
+                <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              <span>
+                {discordState === 'sending-ONX'
+                  ? 'Sending...'
+                  : discordState?.startsWith('ok-ONX')
+                  ? 'Sent!'
+                  : discordState?.startsWith('err-ONX')
+                  ? 'Failed'
+                  : `ONX → Discord`}
+              </span>
+            </button>
+
+            {/* Discord error tooltip */}
+            {discordState?.startsWith('err-') && (
+              <span className="text-[10px] text-rose-400 max-w-[180px] truncate">
+                {discordState.split(':').slice(1).join(':')}
+              </span>
+            )}
 
             {isAdmin && (
               <button
