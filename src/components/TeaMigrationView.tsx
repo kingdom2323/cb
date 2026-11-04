@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRoster } from '../context/RosterContext';
 import {
   TroopTier,
@@ -39,10 +39,11 @@ import {
 export const TeaMigrationView: React.FC = () => {
   const { players, isAdmin, syncWithMightPulse, isSyncingMightPulse } = useRoster();
 
-  // Local state for migration records
+  // Migration records - seeded from localStorage, then hydrated from Supabase
   const [records, setRecords] = useState<Record<string, TeaMigrationRecord>>(() =>
     teaMigrationService.loadMigrationRecords()
   );
+  const [isLoadingFromSupabase, setIsLoadingFromSupabase] = useState(true);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,6 +59,16 @@ export const TeaMigrationView: React.FC = () => {
   const teaPlayersRaw = useMemo(() => {
     return players.filter((p) => p.alliance === 'TEA');
   }, [players]);
+
+  // Hydrate migration records from Supabase whenever the TEA player list changes
+  useEffect(() => {
+    if (teaPlayersRaw.length === 0) return;
+    setIsLoadingFromSupabase(true);
+    teaMigrationService.fetchMigrationRecordsFromSupabase(teaPlayersRaw).then((dbRecords) => {
+      setRecords({ ...dbRecords });
+      setIsLoadingFromSupabase(false);
+    });
+  }, [teaPlayersRaw.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Merge TEA players with their migration records
   const teaPlayers: TeaMigrationPlayer[] = useMemo(() => {
@@ -106,6 +117,8 @@ export const TeaMigrationView: React.FC = () => {
     (playerId: string, destination: MigrationDestination, tgLevel: string) => {
       const updated = teaMigrationService.updatePlayerRecord(playerId, { destination }, tgLevel);
       setRecords({ ...updated });
+      // Persist immediately to Supabase (fire-and-forget)
+      teaMigrationService.persistPlayerRecord(playerId, updated[String(playerId).trim()]);
     },
     []
   );
@@ -115,6 +128,8 @@ export const TeaMigrationView: React.FC = () => {
     (playerId: string, cbStatus: CbParticipationStatus, tgLevel: string) => {
       const updated = teaMigrationService.updatePlayerRecord(playerId, { cbStatus }, tgLevel);
       setRecords({ ...updated });
+      // Persist immediately to Supabase (fire-and-forget)
+      teaMigrationService.persistPlayerRecord(playerId, updated[String(playerId).trim()]);
     },
     []
   );
@@ -138,6 +153,8 @@ export const TeaMigrationView: React.FC = () => {
         tgLevel
       );
       setRecords({ ...updated });
+      // Persist immediately to Supabase (fire-and-forget)
+      teaMigrationService.persistPlayerRecord(playerId, updated[String(playerId).trim()]);
     },
     []
   );
@@ -157,6 +174,8 @@ export const TeaMigrationView: React.FC = () => {
         tgMap
       );
       setRecords({ ...updated });
+      // Batch persist to Supabase (fire-and-forget)
+      teaMigrationService.batchPersistRecords(updated, Array.from(selectedIds));
       setSelectedIds(new Set());
     },
     [selectedIds, teaPlayers]
@@ -176,6 +195,8 @@ export const TeaMigrationView: React.FC = () => {
         tgMap
       );
       setRecords({ ...updated });
+      // Batch persist to Supabase (fire-and-forget)
+      teaMigrationService.batchPersistRecords(updated, Array.from(selectedIds));
       setSelectedIds(new Set());
     },
     [selectedIds, teaPlayers]
@@ -255,6 +276,13 @@ export const TeaMigrationView: React.FC = () => {
 
   return (
     <div className="space-y-4 font-sans text-slate-100">
+      {/* Supabase sync indicator */}
+      {isLoadingFromSupabase && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-950/40 border border-sky-500/30 text-sky-300 text-xs font-medium w-fit">
+          <RefreshCw className="w-3 h-3 animate-spin" />
+          Syncing migration data from database...
+        </div>
+      )}
       {/* =========================================================================
           SECTION 1: TOP SLOT MANAGEMENT & CAPACITY HERO BANNER (X / 100)
           ========================================================================= */}
@@ -300,10 +328,7 @@ export const TeaMigrationView: React.FC = () => {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-lg sm:text-xl font-black text-white tracking-tight uppercase flex items-center gap-2">
-                  <span>TEA Alliance Roster & Migration Manager</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Kingdom 2323
-                  </span>
+                  <span>TEA Roster</span>
                 </h1>
               </div>
 

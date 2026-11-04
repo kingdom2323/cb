@@ -7,9 +7,46 @@ import {
   TeaMigrationPlayer,
 } from '../types/migration';
 import { Player } from '../types/roster';
+import { supabase } from './supabaseClient';
 import { formatTcLevel } from '../utils/formatters';
 
 const TEA_MIGRATION_STORAGE_KEY = 'kvk_tea_migration_records_v1';
+
+// DB column value maps (Supabase stores lowercase strings)
+const DEST_TO_DB: Record<MigrationDestination, string> = {
+  ACTIVE_TEA: 'TEA',
+  VIK: 'VIK',
+  ONX: 'ONX',
+};
+const DB_TO_DEST: Record<string, MigrationDestination> = {
+  TEA: 'ACTIVE_TEA',
+  VIK: 'VIK',
+  ONX: 'ONX',
+};
+
+const CB_TO_DB: Record<CbParticipationStatus, string> = {
+  FULL: 'full',
+  PARTIAL: 'partial',
+  NONE: 'none',
+};
+const DB_TO_CB: Record<string, CbParticipationStatus> = {
+  full: 'FULL',
+  partial: 'PARTIAL',
+  none: 'NONE',
+};
+
+const TIER_TO_DB: Record<TroopTier, string> = {
+  T10: 't10',
+  TG1: 'tg1',
+  TG2: 'tg2',
+  TG3: 'tg3',
+};
+const DB_TO_TIER: Record<string, TroopTier> = {
+  t10: 'T10',
+  tg1: 'TG1',
+  tg2: 'TG2',
+  tg3: 'TG3',
+};
 
 /**
  * Infer default troop tiers based on general Town Center / TrueGold level
@@ -28,10 +65,43 @@ export function inferDefaultTroopTiers(tgLevel: string | undefined): PlayerTroop
   return { infantry: 'T10', cavalry: 'T10', archers: 'T10' };
 }
 
+/** Build a default record for a player who has no DB row yet */
+function defaultRecord(playerId: string, tgLevel: string): TeaMigrationRecord {
+  return {
+    playerId,
+    destination: 'ACTIVE_TEA',
+    cbStatus: 'FULL',
+    troopTiers: inferDefaultTroopTiers(tgLevel),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** Convert a Supabase row's migration fields into a TeaMigrationRecord */
+function rowToRecord(row: Record<string, unknown>, playerId: string, tgLevel: string): TeaMigrationRecord {
+  const dest = DB_TO_DEST[row.migration_status as string] ?? 'ACTIVE_TEA';
+  const cb = DB_TO_CB[row.cb_status as string] ?? 'FULL';
+  const infTier = DB_TO_TIER[row.infantry_tier as string] ?? null;
+  const cavTier = DB_TO_TIER[row.cavalry_tier as string] ?? null;
+  const archTier = DB_TO_TIER[row.archer_tier as string] ?? null;
+
+  const defaultTiers = inferDefaultTroopTiers(tgLevel);
+  return {
+    playerId,
+    destination: dest,
+    cbStatus: cb,
+    troopTiers: {
+      infantry: infTier ?? defaultTiers.infantry,
+      cavalry: cavTier ?? defaultTiers.cavalry,
+      archers: archTier ?? defaultTiers.archers,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export const teaMigrationService = {
-  /**
-   * Load all migration records from localStorage
-   */
+  // ---------------------------------------------------------------------------
+  // localStorage fallback (used as optimistic cache while Supabase loads)
+  // ---------------------------------------------------------------------------
   loadMigrationRecords(): Record<string, TeaMigrationRecord> {
     try {
       const raw = localStorage.getItem(TEA_MIGRATION_STORAGE_KEY);
@@ -47,9 +117,6 @@ export const teaMigrationService = {
     return {};
   },
 
-  /**
-   * Save all migration records to localStorage
-   */
   saveMigrationRecords(records: Record<string, TeaMigrationRecord>): void {
     try {
       localStorage.setItem(TEA_MIGRATION_STORAGE_KEY, JSON.stringify(records));
@@ -58,9 +125,132 @@ export const teaMigrationService = {
     }
   },
 
-  /**
-   * Get or create a record for a specific player
-   */
+  // ---------------------------------------------------------------------------
+  // Supabase: load migration fields for all TEA players
+  // ---------------------------------------------------------------------------
+  async fetchMigrationRecordsFromSupabase(
+    teaPlayers: Player[]
+  ): Promise<Record<string, TeaMigrationRecord>> {
+    if (teaPlayers.length === 0) return {};
+
+    const ids = teaPlayers.map((p) => String(p.id).trim());
+
+    try {
+      const { data, error } = await supabase
+        .from('players')
+        .select('id, migration_status, cb_status, infantry_tier, cavalry_tier, archer_tier')
+        .in('id', ids);
+
+      if (error) {
+        console.warn('Supabase migration fetch error – falling back to localStorage:', error.message);
+        return this.loadMigrationRecords();
+      }
+
+      const tgMap: Record<string, string> = {};
+      teaPlayers.forEach((p) => {
+        tgMap[String(p.id).trim()] = p.tgLevel;
+      });
+
+      const records: Record<string, TeaMigrationRecord> = {};
+      for (const row of data ?? []) {
+        const pid = String(row.id).trim();
+        // Only hydrate if at least one migration column is set
+        const hasMigrationData =
+          row.migration_status != null ||
+          row.cb_status != null ||
+          row.infantry_tier != null ||
+          row.cavalry_tier != null ||
+          row.archer_tier != null;
+
+        records[pid] = hasMigrationData
+          ? rowToRecord(row as Record<string, unknown>, pid, tgMap[pid] ?? '')
+          : defaultRecord(pid, tgMap[pid] ?? '');
+      }
+
+      // Persist hydrated data to localStorage as a cache
+      this.saveMigrationRecords(records);
+      return records;
+    } catch (e) {
+      console.warn('Unexpected error fetching migration records from Supabase:', e);
+      return this.loadMigrationRecords();
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Supabase: persist a single player's migration fields
+  // ---------------------------------------------------------------------------
+  async persistPlayerRecord(
+    playerId: string,
+    record: TeaMigrationRecord
+  ): Promise<void> {
+    const cleanId = String(playerId).trim();
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({
+          migration_status: DEST_TO_DB[record.destination] ?? 'TEA',
+          cb_status: CB_TO_DB[record.cbStatus] ?? 'full',
+          infantry_tier: TIER_TO_DB[record.troopTiers.infantry] ?? 't10',
+          cavalry_tier: TIER_TO_DB[record.troopTiers.cavalry] ?? 't10',
+          archer_tier: TIER_TO_DB[record.troopTiers.archers] ?? 't10',
+        })
+        .eq('id', cleanId);
+
+      if (error) {
+        console.warn(`Supabase persist error for player ${cleanId}:`, error.message);
+      }
+    } catch (e) {
+      console.warn('Unexpected error persisting migration record to Supabase:', e);
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Supabase: batch persist multiple players' migration fields
+  // ---------------------------------------------------------------------------
+  async batchPersistRecords(
+    records: Record<string, TeaMigrationRecord>,
+    playerIds: string[]
+  ): Promise<void> {
+    const rows = playerIds.map((id) => {
+      const cleanId = String(id).trim();
+      const rec = records[cleanId];
+      if (!rec) return null;
+      return {
+        id: cleanId,
+        migration_status: DEST_TO_DB[rec.destination] ?? 'TEA',
+        cb_status: CB_TO_DB[rec.cbStatus] ?? 'full',
+        infantry_tier: TIER_TO_DB[rec.troopTiers.infantry] ?? 't10',
+        cavalry_tier: TIER_TO_DB[rec.troopTiers.cavalry] ?? 't10',
+        archer_tier: TIER_TO_DB[rec.troopTiers.archers] ?? 't10',
+      };
+    }).filter(Boolean) as Record<string, unknown>[];
+
+    if (rows.length === 0) return;
+
+    try {
+      // Upsert each row individually to avoid RLS issues with batch upsert
+      await Promise.all(
+        rows.map((row) =>
+          supabase
+            .from('players')
+            .update({
+              migration_status: row.migration_status,
+              cb_status: row.cb_status,
+              infantry_tier: row.infantry_tier,
+              cavalry_tier: row.cavalry_tier,
+              archer_tier: row.archer_tier,
+            })
+            .eq('id', row.id as string)
+        )
+      );
+    } catch (e) {
+      console.warn('Unexpected error batch-persisting migration records:', e);
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Local helpers (synchronous, optimistic UI)
+  // ---------------------------------------------------------------------------
   getRecordForPlayer(
     playerId: string,
     tgLevel: string,
@@ -68,20 +258,7 @@ export const teaMigrationService = {
   ): TeaMigrationRecord {
     const cleanId = String(playerId).trim();
     const records = existingRecords || this.loadMigrationRecords();
-    const existing = records[cleanId];
-
-    if (existing) {
-      return existing;
-    }
-
-    const defaultTiers = inferDefaultTroopTiers(tgLevel);
-    return {
-      playerId: cleanId,
-      destination: 'ACTIVE_TEA',
-      cbStatus: 'FULL',
-      troopTiers: defaultTiers,
-      updatedAt: new Date().toISOString(),
-    };
+    return records[cleanId] || defaultRecord(cleanId, tgLevel);
   },
 
   /**
@@ -93,7 +270,7 @@ export const teaMigrationService = {
   ): TeaMigrationPlayer[] {
     return teaRoster.map((player) => {
       const cleanId = String(player.id).trim();
-      const rec = records[cleanId] || this.getRecordForPlayer(cleanId, player.tgLevel, records);
+      const rec = records[cleanId] || defaultRecord(cleanId, player.tgLevel);
 
       return {
         ...player,
@@ -107,7 +284,8 @@ export const teaMigrationService = {
   },
 
   /**
-   * Update a single player's migration settings
+   * Update a single player's migration settings in localStorage (optimistic)
+   * Returns updated records map. Caller must separately call persistPlayerRecord().
    */
   updatePlayerRecord(
     playerId: string,
@@ -116,7 +294,7 @@ export const teaMigrationService = {
   ): Record<string, TeaMigrationRecord> {
     const cleanId = String(playerId).trim();
     const records = this.loadMigrationRecords();
-    const current = records[cleanId] || this.getRecordForPlayer(cleanId, tgLevel, records);
+    const current = records[cleanId] || defaultRecord(cleanId, tgLevel);
 
     records[cleanId] = {
       ...current,
@@ -130,7 +308,8 @@ export const teaMigrationService = {
   },
 
   /**
-   * Batch update multiple players' destination or CB status
+   * Batch update multiple players' destination or CB status (optimistic).
+   * Caller must separately call batchPersistRecords().
    */
   batchUpdateRecords(
     playerIds: string[],
@@ -142,8 +321,7 @@ export const teaMigrationService = {
 
     for (const id of playerIds) {
       const cleanId = String(id).trim();
-      const current =
-        records[cleanId] || this.getRecordForPlayer(cleanId, defaultTgLevels[cleanId] || '', records);
+      const current = records[cleanId] || defaultRecord(cleanId, defaultTgLevels[cleanId] ?? '');
 
       records[cleanId] = {
         ...current,
