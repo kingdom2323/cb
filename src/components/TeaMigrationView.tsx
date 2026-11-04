@@ -296,21 +296,16 @@ export const TeaMigrationView: React.FC = () => {
               </span>
             </div>
 
-            {/* Title & Description */}
+            {/* Title */}
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-lg sm:text-xl font-black text-white tracking-tight uppercase flex items-center gap-2">
                   <span>TEA Alliance Roster & Migration Manager</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Kingdom 2323
+                  </span>
                 </h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  Kingdom 2323
-                </span>
               </div>
-              <p className="text-xs text-slate-400 max-w-xl">
-                Manage TEA alliance capacity to free up spots for incoming server players.
-                Move members to <strong>VIK</strong> or <strong>ONX</strong>, record troop tiers,
-                and track Castle Battle (CB) participation.
-              </p>
 
               {/* Progress bar */}
               <div className="w-full max-w-md pt-1">

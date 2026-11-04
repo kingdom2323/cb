@@ -7,7 +7,7 @@ import {
   TeaMigrationPlayer,
 } from '../types/migration';
 import { Player } from '../types/roster';
-import { formatTcLevel, formatPower } from '../utils/formatters';
+import { formatTcLevel } from '../utils/formatters';
 
 const TEA_MIGRATION_STORAGE_KEY = 'kvk_tea_migration_records_v1';
 
@@ -167,24 +167,21 @@ export const teaMigrationService = {
     const filtered = players.filter((p) => p.destination === destination);
     const label =
       destination === 'VIK'
-        ? 'TEA to VIK Migration List'
+        ? 'VIK Migration List'
         : destination === 'ONX'
-        ? 'TEA to ONX Migration List'
-        : 'TEA Active Roster (Remaining)';
+        ? 'ONX Migration List'
+        : 'TEA Active Roster';
 
     const lines = [
-      `--- ${label} (${filtered.length} Players) ---`,
-      ...filtered.map((p, idx) => {
-        const ctTag = p.isCounterTeam ? ' (CT)' : '';
-        const tiers = `[Inf: ${p.troopTiers.infantry} | Cav: ${p.troopTiers.cavalry} | Arch: ${p.troopTiers.archers}]`;
+      `--- ${label} ---`,
+      ...filtered.map((p) => {
         const cb =
           p.cbStatus === 'FULL'
-            ? 'CB: Ready'
+            ? 'Full'
             : p.cbStatus === 'PARTIAL'
-            ? 'CB: Partial'
-            : 'CB: No';
-
-        return `${idx + 1}. [TEA] ${p.name}${ctTag} | Power: ${formatPower(p.currentPower)} | ${tiers} | ${cb}`;
+            ? 'Partial'
+            : 'None';
+        return `${p.name} - CB: ${cb}`;
       }),
     ];
 
