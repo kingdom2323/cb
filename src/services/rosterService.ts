@@ -223,14 +223,17 @@ export const rosterService = {
   },
 
   /**
-   * Update is_counter_team in Supabase in real-time
+   * Update is_counter_team in Supabase in real-time strictly targeted by player ID
    */
   async updatePlayerCounterTeam(playerId: string, isCounterTeam: boolean): Promise<boolean> {
+    const cleanId = String(playerId).trim();
+    if (!cleanId) return false;
+
     const localSet = getLocalCounterTeamSet();
     if (isCounterTeam) {
-      localSet.add(String(playerId));
+      localSet.add(cleanId);
     } else {
-      localSet.delete(String(playerId));
+      localSet.delete(cleanId);
     }
     saveLocalCounterTeamSet(localSet);
 
@@ -238,15 +241,15 @@ export const rosterService = {
       const { error } = await supabase
         .from('players')
         .update({ is_counter_team: isCounterTeam })
-        .eq('id', playerId);
+        .eq('id', cleanId);
 
       if (error) {
-        console.error('Failed to update counter team status on Supabase:', error);
+        console.error(`Failed to update counter team status for player ${cleanId} on Supabase:`, error);
         return false;
       }
       return true;
     } catch (err) {
-      console.error('Supabase update counter team request failed:', err);
+      console.error(`Supabase update counter team request failed for player ${cleanId}:`, err);
       return false;
     }
   },
@@ -257,12 +260,13 @@ export const rosterService = {
   async batchUpdateCounterTeam(playerIds: string[], isCounterTeam: boolean): Promise<boolean> {
     if (!Array.isArray(playerIds) || playerIds.length === 0) return true;
 
+    const cleanIds = playerIds.map((id) => String(id).trim()).filter(Boolean);
     const localSet = getLocalCounterTeamSet();
-    for (const id of playerIds) {
+    for (const id of cleanIds) {
       if (isCounterTeam) {
-        localSet.add(String(id));
+        localSet.add(id);
       } else {
-        localSet.delete(String(id));
+        localSet.delete(id);
       }
     }
     saveLocalCounterTeamSet(localSet);
@@ -271,7 +275,7 @@ export const rosterService = {
       const { error } = await supabase
         .from('players')
         .update({ is_counter_team: isCounterTeam })
-        .in('id', playerIds);
+        .in('id', cleanIds);
 
       if (error) {
         console.error('Failed to batch update counter team status on Supabase:', error);
@@ -312,10 +316,11 @@ export const rosterService = {
         if (Array.isArray(existingRows)) {
           supabaseHasCounterTeamColumn = true;
           for (const row of existingRows) {
-            if (row) {
-              if (row.battle_group) existingGroupMap.set(String(row.id), row.battle_group);
+            if (row && row.id != null) {
+              const cleanRowId = String(row.id).trim();
+              if (row.battle_group) existingGroupMap.set(cleanRowId, row.battle_group);
               if (row.is_counter_team !== undefined && row.is_counter_team !== null) {
-                existingCounterMap.set(String(row.id), Boolean(row.is_counter_team));
+                existingCounterMap.set(cleanRowId, Boolean(row.is_counter_team));
               }
             }
           }
@@ -326,7 +331,9 @@ export const rosterService = {
             .select('id, battle_group');
           if (Array.isArray(fallbackRows)) {
             for (const row of fallbackRows) {
-              if (row && row.battle_group) existingGroupMap.set(String(row.id), row.battle_group);
+              if (row && row.id != null && row.battle_group) {
+                existingGroupMap.set(String(row.id).trim(), row.battle_group);
+              }
             }
           }
         }
@@ -338,15 +345,17 @@ export const rosterService = {
     // Merge preserved battle groups and counter team status directly into incoming player objects
     const localCounterSet = getLocalCounterTeamSet();
     const syncedPlayers: Player[] = incomingPlayers.map((p) => {
-      const preservedGroup = existingGroupMap.get(p.id);
+      const cleanPId = String(p.id).trim();
+      const preservedGroup = existingGroupMap.get(cleanPId);
       const groupToUse = preservedGroup !== undefined && preservedGroup !== null
         ? normalizeBattleGroup(preservedGroup)
         : p.battleGroup;
-      const preservedCounter = existingCounterMap.has(p.id)
-        ? Boolean(existingCounterMap.get(p.id))
-        : localCounterSet.has(p.id) || Boolean(p.isCounterTeam);
+      const preservedCounter = existingCounterMap.has(cleanPId)
+        ? Boolean(existingCounterMap.get(cleanPId))
+        : localCounterSet.has(cleanPId) || Boolean(p.isCounterTeam);
       return {
         ...p,
+        id: cleanPId,
         battleGroup: groupToUse,
         isCounterTeam: preservedCounter,
       };
@@ -444,10 +453,11 @@ export const rosterService = {
           if (Array.isArray(existingRows)) {
             supabaseHasCounterTeamColumn = true;
             for (const row of existingRows) {
-              if (row) {
-                if (row.battle_group) existingGroupMap.set(String(row.id), row.battle_group);
+              if (row && row.id != null) {
+                const cleanRowId = String(row.id).trim();
+                if (row.battle_group) existingGroupMap.set(cleanRowId, row.battle_group);
                 if (row.is_counter_team !== undefined && row.is_counter_team !== null) {
-                  existingCounterMap.set(String(row.id), Boolean(row.is_counter_team));
+                  existingCounterMap.set(cleanRowId, Boolean(row.is_counter_team));
                 }
               }
             }
@@ -458,7 +468,9 @@ export const rosterService = {
               .select('id, battle_group');
             if (Array.isArray(fallbackRows)) {
               for (const row of fallbackRows) {
-                if (row && row.battle_group) existingGroupMap.set(String(row.id), row.battle_group);
+                if (row && row.id != null && row.battle_group) {
+                  existingGroupMap.set(String(row.id).trim(), row.battle_group);
+                }
               }
             }
           }
@@ -470,15 +482,17 @@ export const rosterService = {
       // Format incoming into database rows
       const localCounterSet = getLocalCounterTeamSet();
       const syncedPlayers: Player[] = incomingPlayers.map((p) => {
-        const preservedGroup = existingGroupMap.get(p.id);
+        const cleanPId = String(p.id).trim();
+        const preservedGroup = existingGroupMap.get(cleanPId);
         const groupToUse = preservedGroup !== undefined && preservedGroup !== null
           ? normalizeBattleGroup(preservedGroup)
           : p.battleGroup;
-        const preservedCounter = existingCounterMap.has(p.id)
-          ? Boolean(existingCounterMap.get(p.id))
-          : localCounterSet.has(p.id) || Boolean(p.isCounterTeam);
+        const preservedCounter = existingCounterMap.has(cleanPId)
+          ? Boolean(existingCounterMap.get(cleanPId))
+          : localCounterSet.has(cleanPId) || Boolean(p.isCounterTeam);
         return {
           ...p,
+          id: cleanPId,
           battleGroup: groupToUse,
           isCounterTeam: preservedCounter,
         };

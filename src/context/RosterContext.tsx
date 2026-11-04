@@ -237,18 +237,19 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (payload.eventType === 'UPDATE') {
             const updated = mapRowToPlayer(payload.new);
             setPlayers((prev) =>
-              prev.map((p) => (p.id === updated.id ? updated : p))
+              prev.map((p) => (String(p.id).trim() === String(updated.id).trim() ? updated : p))
             );
           } else if (payload.eventType === 'INSERT') {
             const inserted = mapRowToPlayer(payload.new);
             setPlayers((prev) => {
-              if (prev.some((p) => p.id === inserted.id)) {
-                return prev.map((p) => (p.id === inserted.id ? inserted : p));
+              if (prev.some((p) => String(p.id).trim() === String(inserted.id).trim())) {
+                return prev.map((p) => (String(p.id).trim() === String(inserted.id).trim() ? inserted : p));
               }
               return [inserted, ...prev];
             });
           } else if (payload.eventType === 'DELETE' && payload.old?.id) {
-            setPlayers((prev) => prev.filter((p) => p.id !== payload.old.id));
+            const oldId = String(payload.old.id).trim();
+            setPlayers((prev) => prev.filter((p) => String(p.id).trim() !== oldId));
           }
         }
       )
@@ -338,42 +339,48 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Toggle Counter Team dual categorization for a player
   const togglePlayerCounterTeam = useCallback(async (playerId: string) => {
     if (!isAdmin) return; // Guard: Only admin can toggle counter team
-    let nextStatus = false;
+    const cleanId = String(playerId).trim();
+    if (!cleanId) return;
 
-    // Optimistic UI update
-    setPlayers((prev) => {
-      const updated = prev.map((p) => {
-        if (p.id === playerId) {
-          nextStatus = !p.isCounterTeam;
-          return { ...p, isCounterTeam: nextStatus, updatedAt: new Date().toISOString() };
-        }
-        return p;
-      });
-      rosterService.cachePlayers(updated);
-      return updated;
-    });
-
-    // Execute real-time Supabase update
-    await rosterService.updatePlayerCounterTeam(playerId, nextStatus);
-  }, [isAdmin]);
-
-  // Batch assign/remove Counter Team status for multiple selected players
-  const batchSetCounterTeam = useCallback(async (playerIds: string[], isCounterTeam: boolean) => {
-    if (!isAdmin || !Array.isArray(playerIds) || playerIds.length === 0) return;
-    const idSet = new Set(playerIds);
+    // Determine target player and target status deterministically
+    const targetPlayer = players.find((p) => String(p.id).trim() === cleanId);
+    const nextStatus = targetPlayer ? !targetPlayer.isCounterTeam : true;
 
     // Optimistic UI update
     setPlayers((prev) => {
       const updated = prev.map((p) =>
-        idSet.has(p.id) ? { ...p, isCounterTeam, updatedAt: new Date().toISOString() } : p
+        String(p.id).trim() === cleanId
+          ? { ...p, isCounterTeam: nextStatus, updatedAt: new Date().toISOString() }
+          : p
+      );
+      rosterService.cachePlayers(updated);
+      return updated;
+    });
+
+    // Execute real-time Supabase update targeted strictly and exclusively by ID
+    await rosterService.updatePlayerCounterTeam(cleanId, nextStatus);
+  }, [isAdmin, players]);
+
+  // Batch assign/remove Counter Team status for multiple selected players
+  const batchSetCounterTeam = useCallback(async (playerIds: string[], isCounterTeam: boolean) => {
+    if (!isAdmin || !Array.isArray(playerIds) || playerIds.length === 0) return;
+    const cleanIds = playerIds.map((id) => String(id).trim()).filter(Boolean);
+    const idSet = new Set(cleanIds);
+
+    // Optimistic UI update
+    setPlayers((prev) => {
+      const updated = prev.map((p) =>
+        idSet.has(String(p.id).trim())
+          ? { ...p, isCounterTeam, updatedAt: new Date().toISOString() }
+          : p
       );
       rosterService.cachePlayers(updated);
       return updated;
     });
     setSelectedPlayerIds(new Set());
 
-    // Execute real-time Supabase batch update
-    await rosterService.batchUpdateCounterTeam(playerIds, isCounterTeam);
+    // Execute real-time Supabase batch update targeted strictly and exclusively by IDs
+    await rosterService.batchUpdateCounterTeam(cleanIds, isCounterTeam);
   }, [isAdmin]);
 
   // Reset all allocations back to unassigned in React state and in Supabase

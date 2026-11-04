@@ -403,7 +403,10 @@ export const CastleBattleView: React.FC = () => {
                           {isAdmin && (
                             <button
                               type="button"
-                              onClick={() => togglePlayerCounterTeam(player.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                togglePlayerCounterTeam(player.id);
+                              }}
                               title={player.isCounterTeam ? 'Remove from Counter Team' : 'Add to Counter Team'}
                               className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border transition ${
                                 player.isCounterTeam
