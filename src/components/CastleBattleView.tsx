@@ -103,7 +103,7 @@ export const CastleBattleView: React.FC = () => {
 
     const lines = [
       `--- ${group} ---`,
-      ...list.map((p) => `[${p.alliance}] ${p.name}`),
+      ...list.map((p) => `[${p.alliance}] ${p.name}${p.isCounterTeam ? ' (CT)' : ''}`),
     ];
 
     navigator.clipboard.writeText(lines.join('\n'));
