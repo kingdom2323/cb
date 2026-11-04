@@ -108,6 +108,8 @@ export interface Translations {
   nonCT: string;
   markAsCounterTeam: string;
   removeFromCTBulk: string;
+  teaMigration: string;
+  teaSlots: string;
 }
 
 export const TRANSLATIONS: Record<Language, Translations> = {
@@ -207,6 +209,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     nonCT: 'Non-CT',
     markAsCounterTeam: 'Mark as Counter Team',
     removeFromCTBulk: 'Remove CT Status',
+    teaMigration: 'TEA Migration',
+    teaSlots: 'TEA Slots',
   },
   FR: {
     headerTitle: 'ROSTER KVK',
@@ -304,6 +308,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     nonCT: 'Non-CT',
     markAsCounterTeam: 'Marquer Equipe Contre',
     removeFromCTBulk: 'Retirer Statut CT',
+    teaMigration: 'Migration TEA',
+    teaSlots: 'Places TEA',
   },
   ES: {
     headerTitle: 'ROSTER KVK',
@@ -401,6 +407,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     nonCT: 'No-CT',
     markAsCounterTeam: 'Marcar Equipo Contra',
     removeFromCTBulk: 'Quitar Estado CT',
+    teaMigration: 'Migracion TEA',
+    teaSlots: 'Cupos TEA',
   },
   PT: {
     headerTitle: 'ROSTER KVK',
@@ -498,5 +506,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     nonCT: 'Nao-CT',
     markAsCounterTeam: 'Marcar Equipe Contra',
     removeFromCTBulk: 'Remover Status CT',
+    teaMigration: 'Migracao TEA',
+    teaSlots: 'Vagas TEA',
   },
 };

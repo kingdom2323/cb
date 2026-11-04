@@ -5,6 +5,7 @@ import { StatsBar } from './components/StatsBar';
 import { AllPlayersView } from './components/AllPlayersView';
 import { CastleBattleView } from './components/CastleBattleView';
 import { KingdomMapView } from './components/KingdomMapView/KingdomMapView';
+import { TeaMigrationView } from './components/TeaMigrationView';
 import { ImportModal } from './components/ImportModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { SyncToast } from './components/SyncToast';
@@ -22,14 +23,15 @@ const AppContent: React.FC = () => {
       {/* Floating Sync Notification Toast */}
       <SyncToast />
 
-      {/* High Density Global Metrics Strip */}
-      <StatsBar />
+      {/* High Density Global Metrics Strip (hidden on dedicated migration page) */}
+      {activeTab !== 'tea-migration' && <StatsBar />}
 
       {/* Main View Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-4">
         {activeTab === 'all-players' && <AllPlayersView />}
         {activeTab === 'castle-battle' && <CastleBattleView />}
         {activeTab === 'kingdom-map' && <KingdomMapView />}
+        {activeTab === 'tea-migration' && <TeaMigrationView />}
       </main>
 
       {/* Minimalist Footer */}

@@ -96,6 +96,19 @@ function getInitialTabFromUrl(): TabType {
     const hash = window.location.hash.toLowerCase();
     const path = window.location.pathname.toLowerCase();
     const search = new URLSearchParams(window.location.search);
+
+    if (
+      hash === '#/migrate' ||
+      hash === '#migrate' ||
+      path.endsWith('/migrate') ||
+      path.endsWith('/migrate/') ||
+      path.includes('/migrate') ||
+      search.get('tab') === 'migrate' ||
+      search.get('view') === 'migrate'
+    ) {
+      return 'tea-migration';
+    }
+
     if (
       hash === '#/map' ||
       hash === '#map' ||
@@ -126,11 +139,22 @@ export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         window.location.hash = '/map';
       }
     } else if (tab === 'castle-battle') {
-      if (window.location.hash === '#/map' || window.location.hash === '#map') {
+      if (window.location.hash !== '#/castle' && window.location.hash !== '#castle') {
         window.location.hash = '/castle';
       }
+    } else if (tab === 'tea-migration') {
+      if (window.location.hash !== '#/migrate' && window.location.hash !== '#migrate') {
+        window.location.hash = '/migrate';
+      }
     } else {
-      if (window.location.hash === '#/map' || window.location.hash === '#map') {
+      if (
+        window.location.hash === '#/map' ||
+        window.location.hash === '#map' ||
+        window.location.hash === '#/castle' ||
+        window.location.hash === '#castle' ||
+        window.location.hash === '#/migrate' ||
+        window.location.hash === '#migrate'
+      ) {
         history.replaceState(null, '', window.location.pathname + window.location.search);
       }
     }

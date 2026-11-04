@@ -6,6 +6,7 @@ import { Language } from '../i18n/translations';
 import {
   Users,
   Castle,
+  ArrowRightLeft,
   Download,
   FileSpreadsheet,
   FileJson,
@@ -111,6 +112,8 @@ export const Header: React.FC = () => {
     (p) => p.battleGroup !== 'Unassigned' && p.battleGroup !== 'Inactive'
   ).length;
 
+  const teaCount = players.filter((p) => p.alliance === 'TEA').length;
+
   const currentLangOption = LANG_OPTIONS.find((o) => o.code === lang) || LANG_OPTIONS[0];
 
   return (
@@ -166,6 +169,27 @@ export const Header: React.FC = () => {
               }`}
             >
               {activeBattleCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('tea-migration')}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              activeTab === 'tea-migration'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+            title="TEA Alliance Slot & Migration Management (/migrate)"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t.teaMigration}</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                activeTab === 'tea-migration' ? 'bg-amber-800 text-white' : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              {teaCount}
             </span>
           </button>
         </nav>
@@ -339,6 +363,37 @@ export const Header: React.FC = () => {
       {/* Mobile dropdown panel */}
       {showMobileMenu && (
         <div className="sm:hidden bg-slate-900 border-t border-slate-800 px-3 py-3 space-y-2 animate-in slide-in-from-top-2 duration-150">
+          {/* Quick tab switcher for mobile */}
+          <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-[11px] font-semibold">
+            <button
+              type="button"
+              onClick={() => { setActiveTab('all-players'); setShowMobileMenu(false); }}
+              className={`py-1.5 px-1 rounded text-center transition ${
+                activeTab === 'all-players' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400'
+              }`}
+            >
+              {t.allPlayers}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveTab('castle-battle'); setShowMobileMenu(false); }}
+              className={`py-1.5 px-1 rounded text-center transition ${
+                activeTab === 'castle-battle' ? 'bg-rose-600 text-white font-bold' : 'text-slate-400'
+              }`}
+            >
+              {t.castleBattle}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveTab('tea-migration'); setShowMobileMenu(false); }}
+              className={`py-1.5 px-1 rounded text-center transition flex items-center justify-center gap-1 ${
+                activeTab === 'tea-migration' ? 'bg-amber-600 text-white font-bold' : 'text-amber-400'
+              }`}
+            >
+              <ArrowRightLeft className="w-3 h-3" />
+              <span>TEA</span>
+            </button>
+          </div>
           {isAdmin ? (
             <>
               {/* Admin badge */}
